@@ -1,0 +1,8 @@
+# 运行时依赖
+flask>=3.0
+pandas>=2.0
+pypdf>=4.0
+pypandoc>=1.11
+weasyprint>=60.0
+requests>=2.31
+python-dotenv>=1.0

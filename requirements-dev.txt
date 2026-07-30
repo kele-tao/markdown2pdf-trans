@@ -1,0 +1,4 @@
+# 开发时额外安装
+-r requirements.txt
+pytest>=8.0
+playwright>=1.40

@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 文档翻译中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    <style>
+        :root {
+            --brand-1: #6366f1;
+            --brand-2: #8b5cf6;
+            --brand-3: #ec4899;
+            --brand-grad: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 50%, var(--brand-3) 100%);
+            --brand-grad-soft: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(236,72,153,0.08) 100%);
+            --surface: #ffffff;
+            --surface-2: #f8fafc;
+            --surface-3: #f1f5f9;
+            --border: #e5e7eb;
+            --text: #1f2937;
+            --text-muted: #6b7280;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 40px rgba(99,102,241,0.12);
+        }
+        [data-bs-theme="dark"] {
+            --brand-1: #818cf8;
+            --brand-2: #a78bfa;
+            --brand-3: #f472b6;
+            --brand-grad-soft: linear-gradient(135deg, rgba(129,140,248,0.10) 0%, rgba(244,114,182,0.10) 100%);
+            --surface: #1e1e2e;
+            --surface-2: #181825;
+            --surface-3: #11111b;
+            --border: #313244;
+            --text: #e6e6e6;
+            --text-muted: #a6a6a6;
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 10px 40px rgba(129,140,248,0.15);
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--surface-2);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+            margin: 0;
+        }
+        /* 顶部装饰条 */
+        body::before {
+            content: "";
+            display: block;
+            height: 3px;
+            background: var(--brand-grad);
+        }
+        /* Navbar */
+        .navbar-brand-wrap {
+            display: flex; align-items: center; gap: 0.6rem;
+            font-weight: 800; font-size: 1.2rem;
+        }
+        .brand-logo {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+        }
+        .brand-name {
+            background: var(--brand-grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .navbar {
+            background: var(--surface) !important;
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 0;
+        }
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s;
+        }
+        .card-elevated { box-shadow: var(--shadow-md); }
+        /* 状态徽章 */
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.3rem 0.7rem; border-radius: 999px;
+            font-size: 0.82rem; font-weight: 500;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+        }
+        .status-pill .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .status-ok { color: var(--success); }
+        .status-warn { color: var(--warning); }
+        .status-err { color: var(--danger); }
+        /* Icon button */
+        .icon-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 0.35rem 0.6rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .icon-btn:hover { border-color: var(--brand-1); color: var(--brand-1); }
+        /* Form section */
+        .form-section {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            margin-bottom: 0.8rem;
+        }
+        .form-section legend {
+            float: none; width: auto; padding: 0 0.5rem;
+            font-size: 0.92rem; font-weight: 600;
+            color: var(--brand-1);
+            display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .form-section > div, .form-section > .row { clear: both; }
+        .form-label { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.2rem; }
+        .form-control, .form-select {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--brand-1);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+        }
+        /* 主题预设 */
+        .theme-chip {
+            display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+            padding: 0.7rem 0.4rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        .theme-chip:hover { transform: translateY(-2px); border-color: var(--brand-1); }
+        .theme-chip.active {
+            border-color: var(--brand-1);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+            background: var(--brand-grad-soft);
+        }
+        .theme-preview {
+            width: 100%; height: 36px; border-radius: 6px;
+            display: flex; overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .theme-preview > div { flex: 1; }
+        .theme-name { font-size: 0.78rem; font-weight: 600; }
+        /* 上传区 */
+        .upload-zone {
+            display: block;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--surface-2);
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--brand-1);
+            background: var(--brand-grad-soft);
+        }
+        .upload-zone.dragover .upload-icon { transform: translateY(-3px) scale(1.1); }
+        .upload-icon {
+            font-size: 2.2rem;
+            background: var(--brand-grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: transform 0.2s;
+        }
+        /* 上传类型按钮组 */
+        .upload-types {
+            display: flex; gap: 0.4rem; margin-bottom: 0.8rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.3rem;
+        }
+        .upload-types .btn-check:checked + .btn {
+            background: var(--brand-grad);
+            color: white;
+            border: none;
+        }
+        .upload-types .btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            padding: 0.4rem;
+            border-radius: 7px;
+        }
+        /* 导出模式卡片 */
+        .mode-card {
+            display: block; padding: 0.8rem; border: 2px solid var(--border);
+            border-radius: 10px; cursor: pointer; transition: all 0.15s;
+            background: var(--surface);
+        }
+        .mode-radio { display: none; }
+        .mode-radio:checked + .mode-card {
+            border-color: var(--brand-1);
+            background: var(--brand-grad-soft);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.10);
+        }
+        .mode-title { font-weight: 600; margin-bottom: 0.2rem; }
+        .mode-desc { font-size: 0.78rem; color: var(--text-muted); }
+        /* 主操作按钮 */
+        .btn-brand {
+            background: var(--brand-grad);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.7rem 1.4rem;
+            border-radius: 10px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+        }
+        .btn-brand:hover:not(:disabled) {
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(99,102,241,0.35);
+        }
+        .btn-brand:disabled {
+            background: var(--surface-3);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        /* 预览 */
+        .preview-frame {
+            height: 75vh;
+            min-height: 500px;
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            background: var(--surface-2);
+            width: 100%;
+        }
+        .preview-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.5rem 0.8rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            font-weight: 600; font-size: 0.9rem;
+        }
+        .preview-header .badge { font-weight: 500; }
+        /* 进度区 */
+        .progress-card { background: var(--surface); }
+        .progress { height: 1.4rem; background: var(--surface-3); }
+        .progress-bar { background: var(--brand-grad); }
+        /* 日志 */
+        .log-container {
+            background: #0f0f17;
+            color: #d4d4d4;
+            font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+            max-height: 280px; overflow-y: auto;
+            border-radius: 8px; padding: 0.7rem;
+        }
+        .log-container pre {
+            white-space: pre-wrap; word-break: break-word;
+            margin: 0; font-size: 0.78rem; line-height: 1.5;
+            color: #94a3b8;
+        }
+        .log-container pre.fail { color: #f87171; }
+        .log-container pre.warn { color: #fbbf24; }
+        .log-container pre.success { color: #34d399; }
+        /* details */
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::after { content: "▾"; float: right; transition: transform 0.2s; margin-left: 0.5rem; }
+        details[open] > summary::after { transform: rotate(180deg); }
+        /* Toast */
+        .toast-stack {
+            position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+            display: flex; flex-direction: column; gap: 0.5rem;
+            max-width: 360px;
+        }
+        .toast-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--brand-1);
+            border-radius: 8px;
+            padding: 0.7rem 0.9rem;
+            box-shadow: var(--shadow-md);
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast-item.success { border-left-color: var(--success); }
+        .toast-item.warning { border-left-color: var(--warning); }
+        .toast-item.danger { border-left-color: var(--danger); }
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        /* 骨架屏 */
+        .skeleton {
+            background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        /* 响应式 */
+        @media (max-width: 991.98px) {
+            .col-lg-4, .col-lg-8 { margin-bottom: 1rem; }
+            .preview-frame { height: 60vh; min-height: 400px; }
+        }
+        /* 颜色选择器 */
+        input[type="color"] {
+            padding: 2px; height: 38px; width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar sticky-top">
+        <div class="container-fluid px-4">
+            <div class="navbar-brand-wrap">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="brand-logo">
+                <span class="brand-name">AI 文档翻译中心</span>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <span id="ai-status" class="status-pill">
+                    <span class="dot"></span><span>检查中…</span>
+                </span>
+                <button id="themeToggle" class="icon-btn" title="切换暗色模式" aria-label="切换暗色模式">
+                    <i class="bi bi-moon-stars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 my-4">
+        <div class="row g-4">
+            <!-- 左侧：控制面板 -->
+            <div class="col-lg-4">
+                <div class="card card-elevated p-3">
+                    <!-- 1. 上传 -->
+                    <fieldset class="form-section">
+                        <legend><i class="bi bi-cloud-upload"></i>1. 上传文件</legend>
+                        <div class="upload-types" role="group">
+                            <input type="radio" class="btn-check" name="upload_type" id="zipRadio" value="zip" checked>
+                            <label class="btn" for="zipRadio"><i class="bi bi-file-zip me-1"></i>ZIP</label>
+                            <input type="radio" class="btn-check" name="upload_type" id="folderRadio" value="folder">
+                            <label class="btn" for="folderRadio"><i class="bi bi-folder2-open me-1"></i>文件夹</label>
+                            <input type="radio" class="btn-check" name="upload_type" id="fileRadio" value="file">
+                            <label class="btn" for="fileRadio"><i class="bi bi-file-earmark-text me-1"></i>单文件</label>
+                        </div>
+                        <label for="file_input" class="upload-zone" id="dropZone">
+                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                            <div class="mt-2 fw-medium" id="dropHint">点击或拖拽文件到此处</div>
+                            <div class="text-muted small mt-1" id="file-name-hint"></div>
+                            <input type="file" id="file_input" name="files" class="d-none">
+                        </label>
+                        <div id="status-message" class="alert alert-info py-2 px-3 mt-2 mb-0 small" role="status"></div>
+                    </fieldset>
+
+                    <!-- 2. 选择 + 语言 -->
+                    <div id="main-controls" style="display: none;">
+                        <fieldset class="form-section">
+                            <legend><i class="bi bi-file-earmark"></i>2. 选择文件 / 语言</legend>
+                            <div class="mb-2">
+                                <label class="form-label" for="preview_file_select">预览文件</label>
+                                <select id="preview_file_select" class="form-select form-select-sm"></select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="target_language">目标语言</label>
+                                <select id="target_language" class="form-select form-select-sm">
+                                    {% for code, label in languages %}
+                                    <option value="{{ code }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </fieldset>
+
+                        <!-- 3. 主题预设 -->
+                        <fieldset class="form-section">
+                            <legend><i class="bi bi-palette"></i>3. 主题预设</legend>
+                            <div class="row g-2" id="theme-grid">
+                                {% for key, theme in themes.items() %}
+                                <div class="col-3">
+                                    <div class="theme-chip" data-theme-key="{{ key }}" title="{{ theme.name }}">
+                                        <div class="theme-preview">
+                                            <div style="background: {{ theme.text_color }};"></div>
+                                            <div style="background: {{ theme.heading_color }};"></div>
+                                            <div style="background: {{ theme.link_color }};"></div>
+                                            <div style="background: {{ theme.quote_bg_color }};"></div>
+                                        </div>
+                                        <div class="theme-name">{{ theme.name }}</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </fieldset>
+
+                        <!-- 4. 详细样式 -->
+                        <details class="form-section" id="style-details">
+                            <summary><strong style="color: var(--brand-1);"><i class="bi bi-sliders me-1"></i>4. 详细样式</strong></summary>
+                            <div class="mt-3">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label">页面方向</label>
+                                        <select id="page_orientation" class="form-select form-select-sm">
+                                            <option value="portrait">纵向</option>
+                                            <option value="landscape">横向</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">页边距</label>
+                                        <select id="page_margin" class="form-select form-select-sm">
+                                            <option value="2.5cm">标准</option>
+                                            <option value="2cm">中等</option>
+                                            <option value="1.5cm">较窄</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">正文字体</label>
+                                        <select id="font_family" class="form-select form-select-sm">
+                                            <option value='"Times New Roman", "Microsoft YaHei", serif'>宋体/衬线</option>
+                                            <option value='"Helvetica", "Arial", "Microsoft YaHei", sans-serif'>黑体/非衬线</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">正文字号</label>
+                                        <select id="font_size" class="form-select form-select-sm">
+                                            <option value="12pt">12pt</option>
+                                            <option value="11pt">11pt</option>
+                                            <option value="10pt">10pt</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">行间距</label>
+                                        <select id="line_height" class="form-select form-select-sm">
+                                            <option value="1.7">1.7</option>
+                                            <option value="1.5">1.5</option>
+                                            <option value="2.0">2.0</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">文本对齐</label>
+                                        <select id="text_align" class="form-select form-select-sm">
+                                            <option value="justify">两端对齐</option>
+                                            <option value="left">左对齐</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">标题粗细</label>
+                                        <select id="heading_weight" class="form-select form-select-sm">
+                                            <option value="700">粗体</option>
+                                            <option value="normal">常规</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">代码高亮</label>
+                                        <select id="code_theme" class="form-select form-select-sm">
+                                            <option value="kate">Kate</option>
+                                            <option value="pygments">Pygments</option>
+                                            <option value="tango">Tango</option>
+                                            <option value="monokai">Monokai</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">代码字号</label>
+                                        <select id="code_font_size" class="form-select form-select-sm">
+                                            <option value="85%">85%</option>
+                                            <option value="100%">100%</option>
+                                            <option value="75%">75%</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">正文颜色</label>
+                                        <input type="color" id="text_color" value="#333333">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">标题颜色</label>
+                                        <input type="color" id="heading_color" value="#000000">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">链接颜色</label>
+                                        <input type="color" id="link_color" value="#0d6efd">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">引用块背景</label>
+                                        <input type="color" id="quote_bg_color" value="#f9f9f9">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">引用块边框</label>
+                                        <input type="color" id="quote_border_color" value="#cccccc">
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- 5. 导出模式 -->
+                        <fieldset class="form-section">
+                            <legend><i class="bi bi-box-arrow-up-right"></i>5. 导出模式</legend>
+                            {% for value, label in export_modes %}
+                            <input type="radio" class="mode-radio" name="export_mode" id="mode_{{ value }}" value="{{ value }}" {% if loop.first %}checked{% endif %}>
+                            <label for="mode_{{ value }}" class="mode-card mb-2">
+                                <div class="mode-title">
+                                    {% if value == 'translated' %}<i class="bi bi-translate me-1"></i>
+                                    {% elif value == 'original' %}<i class="bi bi-file-text me-1"></i>
+                                    {% else %}<i class="bi bi-layout-split me-1"></i>{% endif %}
+                                    {{ label }}
+                                </div>
+                                <div class="mode-desc">
+                                    {% if value == 'translated' %}只生成译文 PDF，文件名也会翻译（需要 AI）
+                                    {% elif value == 'original' %}只生成原文 PDF（不需要 AI）
+                                    {% else %}同时生成对照 PDF + 单独译文 PDF
+                                    {% endif %}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </fieldset>
+
+                        <button type="button" id="convertBtn" class="btn btn-brand w-100 mt-2" disabled>
+                            <i class="bi bi-lightning-charge-fill me-2"></i>开始批量处理
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：预览 + 进度 -->
+            <div class="col-lg-8">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="preview-header">
+                            <span><i class="bi bi-file-text me-1"></i>原文预览</span>
+                            <span class="badge bg-secondary-subtle text-secondary" id="orig-page-info">—</span>
+                        </div>
+                        <iframe id="preview-original" class="preview-frame" title="Original Preview"></iframe>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="preview-header">
+                            <span><i class="bi bi-translate me-1"></i>译文预览</span>
+                            <span class="badge bg-secondary-subtle text-secondary" id="trans-page-info">—</span>
+                        </div>
+                        <iframe id="preview-translated" class="preview-frame" title="Translated Preview"></iframe>
+                    </div>
+                </div>
+
+                <!-- 进度区 -->
+                <div id="progress-area" class="card progress-card p-3 mt-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="bi bi-activity me-1"></i>处理进度</h6>
+                        <span id="progress-text" class="text-muted small">0%</span>
+                    </div>
+                    <div class="progress mb-2" role="progressbar">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="small text-muted mb-3" id="current-file-hint">准备中...</div>
+                    <div id="task-controls" class="d-flex gap-2 justify-content-center mb-3" style="display: none;">
+                        <button id="pauseBtn" class="btn btn-sm btn-warning"><i class="bi bi-pause-fill me-1"></i>暂停</button>
+                        <button id="resumeBtn" class="btn btn-sm btn-success" style="display:none;"><i class="bi bi-play-fill me-1"></i>继续</button>
+                        <button id="stopBtn" class="btn btn-sm btn-danger"><i class="bi bi-stop-circle-fill me-1"></i>结束</button>
+                    </div>
+                    <details open>
+                        <summary class="text-muted small mb-1">实时日志 <span id="log-count" class="badge bg-secondary ms-2">0</span></summary>
+                        <div id="log-container" class="log-container"></div>
+                    </details>
+                    <div id="download-area" class="d-grid mt-3" style="display: none;">
+                        <a id="download-link" href="#" class="btn btn-success">
+                            <i class="bi bi-cloud-download me-2"></i>下载结果 (ZIP)
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <script>
+    // 主题预设（后端注入）
+    const THEMES = {{ themes_json | safe }};
+
+    // 状态
+    let currentTaskId = null;
+    let pollTimer = null;
+
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+        zipRadio: $('zipRadio'), folderRadio: $('folderRadio'), fileRadio: $('fileRadio'),
+        fileInput: $('file_input'), dropZone: $('dropZone'),
+        dropHint: $('drop-hint'), fileNameHint: $('file-name-hint'),
+        mainControls: $('main-controls'),
+        previewFileSelect: $('preview_file_select'),
+        targetLanguage: $('target_language'),
+        statusMessage: $('status-message'),
+        previewOriginal: $('preview-original'),
+        previewTranslated: $('preview-translated'),
+        origPageInfo: $('orig-page-info'),
+        transPageInfo: $('trans-page-info'),
+        convertBtn: $('convertBtn'),
+        progressArea: $('progress-area'),
+        progressBar: $('progress-bar'),
+        progressText: $('progress-text'),
+        currentFileHint: $('current-file-hint'),
+        taskControls: $('task-controls'),
+        pauseBtn: $('pauseBtn'),
+        resumeBtn: $('resumeBtn'),
+        stopBtn: $('stopBtn'),
+        logContainer: $('log-container'),
+        logCount: $('log-count'),
+        downloadArea: $('download-area'),
+        downloadLink: $('download-link'),
+        styleDetails: $('style-details'),
+        themeGrid: $('theme-grid'),
+        themeToggle: $('themeToggle'),
+        aiStatus: $('ai-status'),
+        toastStack: $('toastStack'),
+    };
+
+    // ==================== 工具 ====================
+    function debounce(fn, ms) {
+        let t;
+        return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+    }
+    const debouncedPreview = debounce(generatePreview, 500);
+
+    function toast(msg, type = 'info', duration = 3500) {
+        const el = document.createElement('div');
+        el.className = `toast-item ${type}`;
+        el.innerHTML = msg;
+        ui.toastStack.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; el.style.transition = 'all 0.3s'; }, duration);
+        setTimeout(() => el.remove(), duration + 300);
+    }
+
+    function setStatus(msg, type = 'info') {
+        ui.statusMessage.textContent = msg;
+        ui.statusMessage.className = `alert alert-${type} py-2 px-3 mt-2 mb-0 small`;
+    }
+
+    function getStyleOptions() {
+        const opts = {};
+        document.querySelectorAll('#style-details select, #style-details input').forEach(el => {
+            if (el.id) opts[el.id] = el.value;
+        });
+        return opts;
+    }
+
+    // ==================== 主题 ====================
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        ui.themeToggle.innerHTML = theme === 'dark'
+            ? '<i class="bi bi-sun"></i>'
+            : '<i class="bi bi-moon-stars"></i>';
+        try { localStorage.setItem('m2p-theme', theme); } catch {}
+    }
+    ui.themeToggle.addEventListener('click', () => {
+        const cur = document.documentElement.getAttribute('data-bs-theme');
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+    });
+    try { applyTheme(localStorage.getItem('m2p-theme') || 'light'); } catch { applyTheme('light'); }
+
+    function applyThemePreset(key) {
+        const t = THEMES[key];
+        if (!t) return;
+        Object.entries(t).forEach(([k, v]) => {
+            const el = document.getElementById(k);
+            if (el && document.getElementById('style-details').contains(el)) el.value = v;
+        });
+        document.querySelectorAll('.theme-chip').forEach(c => c.classList.toggle('active', c.dataset.themeKey === key));
+        debouncedPreview();
+    }
+    ui.themeGrid.addEventListener('click', e => {
+        const chip = e.target.closest('.theme-chip');
+        if (chip) applyThemePreset(chip.dataset.themeKey);
+    });
+    // 默认选中第一个主题
+    const firstChip = document.querySelector('.theme-chip');
+    if (firstChip) { firstChip.classList.add('active'); applyThemePreset(firstChip.dataset.themeKey); }
+
+    // 监听所有样式变化
+    ui.styleDetails.addEventListener('change', debouncedPreview);
+    ui.previewFileSelect.addEventListener('change', debouncedPreview);
+    ui.targetLanguage.addEventListener('change', debouncedPreview);
+
+    // ==================== 上传 ====================
+    function toggleUploadMode() {
+        const isFolder = ui.folderRadio.checked;
+        const isFile = ui.fileRadio.checked;
+        ui.fileInput.webkitdirectory = isFolder;
+        ui.fileInput.directory = isFolder;
+        ui.fileInput.multiple = isFolder;
+        ui.fileInput.accept = isFile ? '.md' : (isFolder ? '' : '.zip');
+        resetState();
+    }
+    [ui.zipRadio, ui.folderRadio, ui.fileRadio].forEach(r => r.addEventListener('change', toggleUploadMode));
+
+    // 拖拽
+    ['dragenter','dragover'].forEach(ev => ui.dropZone.addEventListener(ev, e => { e.preventDefault(); ui.dropZone.classList.add('dragover'); ui.dropHint.textContent = '松开即可上传'; }));
+    ['dragleave','drop'].forEach(ev => ui.dropZone.addEventListener(ev, e => { e.preventDefault(); ui.dropZone.classList.remove('dragover'); ui.dropHint.textContent = '点击或拖拽文件到此处'; }));
+    ui.dropZone.addEventListener('drop', e => {
+        if (e.dataTransfer.files.length) {
+            ui.fileInput.files = e.dataTransfer.files;
+            ui.fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+
+    ui.fileInput.addEventListener('change', () => {
+        const files = ui.fileInput.files;
+        if (files.length === 0) { ui.fileNameHint.textContent = ''; return; }
+        ui.fileNameHint.textContent = files.length === 1 ? files[0].name : `已选 ${files.length} 个文件`;
+    });
+
+    function resetState() {
+        currentTaskId = null;
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        ui.fileInput.value = '';
+        ui.fileNameHint.textContent = '';
+        ui.mainControls.style.display = 'none';
+        setStatus('选择 ZIP 包、文件夹或单个 .md 文件', 'info');
+        ui.previewOriginal.src = 'about:blank';
+        ui.previewTranslated.src = 'about:blank';
+        ui.origPageInfo.textContent = '—';
+        ui.transPageInfo.textContent = '—';
+        ui.progressArea.style.display = 'none';
+        ui.taskControls.style.display = 'none';
+        ui.logContainer.innerHTML = '';
+        ui.logCount.textContent = '0';
+        ui.downloadArea.style.display = 'none';
+        ui.convertBtn.disabled = true;
+    }
+
+    async function handleFileSelection() {
+        const files = ui.fileInput.files;
+        if (!files || files.length === 0) return;
+
+        const formData = new FormData();
+        formData.append('upload_type', document.querySelector('input[name="upload_type"]:checked').value);
+        if (ui.zipRadio.checked) formData.append('zipfile', files[0]);
+        else if (ui.folderRadio.checked) for (const f of files) formData.append('files[]', f, f.webkitRelativePath);
+        else formData.append('file', files[0]);
+
+        setStatus('文件上传和预处理中…', 'warning');
+        try {
+            const res = await fetch('/prepare_upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '服务器准备文件失败');
+
+            currentTaskId = data.task_id;
+            if (data.preview_files && data.preview_files.length > 0) {
+                setStatus(`✅ 准备就绪！共找到 ${data.preview_files.length} 个 .md 文件`, 'success');
+                ui.previewFileSelect.innerHTML = '';
+                data.preview_files.forEach(f => {
+                    const o = document.createElement('option');
+                    o.value = f; o.textContent = f; o.title = f;
+                    ui.previewFileSelect.appendChild(o);
+                });
+                ui.mainControls.style.display = 'block';
+                ui.convertBtn.disabled = false;
+                generatePreview();
+            } else {
+                setStatus('⚠️ 上传成功但未找到 .md 文件', 'warning');
+            }
+        } catch (err) {
+            setStatus(`❌ ${err.message}`, 'danger');
+            resetState();
+        }
+    }
+    ui.fileInput.addEventListener('change', handleFileSelection);
+
+    // ==================== 预览 ====================
+    async function generatePreview() {
+        if (!currentTaskId || !ui.previewFileSelect.value) return;
+        const payload = {
+            task_id: currentTaskId,
+            style_options: getStyleOptions(),
+            preview_file: ui.previewFileSelect.value,
+            target_language: ui.targetLanguage.value,
+        };
+        const loadingHtml = (m, isErr=false) => `<!DOCTYPE html><html><body style="font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;background:${isErr?'#fef2f2':'transparent'};color:${isErr?'#dc2626':'#6b7280'};text-align:center;padding:2rem;"><div><div style="font-size:2rem;margin-bottom:.5rem">${isErr?'⚠️':'⏳'}</div><div>${m}</div></div></body></html>`;
+
+        ui.previewOriginal.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml('加载中…'));
+        ui.previewTranslated.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml('翻译中…'));
+        ui.origPageInfo.textContent = '…';
+        ui.transPageInfo.textContent = '…';
+
+        const handle = async (res, errMsg) => {
+            if (!res.ok) {
+                const text = await res.text();
+                return { err: text || errMsg, page: '0' };
+            }
+            const blob = await res.blob();
+            return { blob, page: res.headers.get('X-Page-Count') || '0' };
+        };
+
+        try {
+            const [r1, r2] = await Promise.all([
+                fetch('/preview/original', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+                fetch('/preview/translated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
+            ]);
+            const [orig, trans] = await Promise.all([
+                handle(r1, '原文预览失败'),
+                handle(r2, '译文预览失败'),
+            ]);
+            if (orig.err) {
+                ui.previewOriginal.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml(orig.err, true));
+                ui.origPageInfo.textContent = '错误';
+            } else {
+                ui.previewOriginal.src = URL.createObjectURL(orig.blob);
+                ui.origPageInfo.textContent = `${orig.page} 页`;
+            }
+            if (trans.err) {
+                ui.previewTranslated.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml(trans.err, true));
+                ui.transPageInfo.textContent = '错误';
+            } else {
+                ui.previewTranslated.src = URL.createObjectURL(trans.blob);
+                ui.transPageInfo.textContent = `${trans.page} 页`;
+            }
+        } catch (err) {
+            toast('预览请求失败: ' + err.message, 'danger');
+        }
+    }
+
+    // ==================== 转换 ====================
+    ui.convertBtn.addEventListener('click', async () => {
+        if (!currentTaskId) return;
+        ui.convertBtn.disabled = true;
+        ui.convertBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>处理中…';
+        ui.progressArea.style.display = 'block';
+        ui.taskControls.style.display = 'flex';
+        ui.logContainer.innerHTML = '';
+        ui.logCount.textContent = '0';
+        ui.downloadArea.style.display = 'none';
+        ui.progressBar.style.width = '0%';
+        ui.progressBar.textContent = '0%';
+        ui.progressBar.classList.remove('bg-success', 'bg-danger');
+        ui.currentFileHint.textContent = '任务启动中...';
+
+        const exportMode = document.querySelector('input[name="export_mode"]:checked')?.value || 'translated';
+        try {
+            const res = await fetch('/start_conversion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    task_id: currentTaskId,
+                    style_options: getStyleOptions(),
+                    target_language: ui.targetLanguage.value,
+                    export_mode: exportMode,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '启动失败');
+            pollStatus(data.task_id);
+        } catch (err) {
+            toast('启动失败: ' + err.message, 'danger');
+            ui.convertBtn.disabled = false;
+            ui.convertBtn.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>开始批量处理';
+            ui.taskControls.style.display = 'none';
+        }
+    });
+
+    function controlTask(action) {
+        if (!currentTaskId) return;
+        fetch(`/${action}/${currentTaskId}`, { method: 'POST' });
+    }
+    ui.pauseBtn.addEventListener('click', () => controlTask('pause'));
+    ui.resumeBtn.addEventListener('click', () => controlTask('resume'));
+    ui.stopBtn.addEventListener('click', () => controlTask('stop'));
+
+    function pollStatus(taskId) {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(async () => {
+            try {
+                const res = await fetch(`/status/${taskId}`);
+                const s = await res.json();
+                if (!res.ok) throw new Error(s.error || '状态查询失败');
+                ui.progressBar.style.width = s.progress + '%';
+                ui.progressText.textContent = s.progress + '%';
+                ui.progressBar.textContent = s.progress + '%';
+                if (s.current_file) {
+                    ui.currentFileHint.textContent = `正在处理: ${s.current_file}`;
+                }
+                (s.logs || []).forEach(l => appendLog(l.log));
+                if (s.state === 'RUNNING') {
+                    ui.pauseBtn.style.display = 'inline-block';
+                    ui.resumeBtn.style.display = 'none';
+                } else if (s.state === 'PAUSED') {
+                    ui.pauseBtn.style.display = 'none';
+                    ui.resumeBtn.style.display = 'inline-block';
+                    ui.currentFileHint.textContent = '已暂停...';
+                } else if (s.state === 'STOPPING') {
+                    ui.currentFileHint.textContent = '正在停止...';
+                }
+                if (['SUCCESS','FAILURE','STOPPED'].includes(s.state)) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    ui.convertBtn.disabled = false;
+                    ui.convertBtn.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>开始批量处理';
+                    ui.taskControls.style.display = 'none';
+                    if (s.state === 'SUCCESS') {
+                        ui.progressBar.classList.add('bg-success');
+                        ui.downloadLink.href = s.result_url;
+                        ui.downloadArea.style.display = 'block';
+                        ui.currentFileHint.textContent = '✅ 全部完成';
+                        toast('🎉 任务完成！可以下载结果了。', 'success', 5000);
+                    } else {
+                        ui.progressBar.classList.add('bg-danger');
+                        ui.currentFileHint.textContent = s.state === 'FAILURE' ? `❌ 失败: ${s.error || '未知错误'}` : '⏹ 已停止';
+                        toast(`任务${s.state === 'FAILURE' ? '失败' : '已停止'}`, s.state === 'FAILURE' ? 'danger' : 'warning');
+                    }
+                }
+            } catch (e) {
+                console.error('poll error', e);
+            }
+        }, 1500);
+    }
+
+    function appendLog(msg) {
+        const pre = document.createElement('pre');
+        pre.textContent = '> ' + msg;
+        if (msg.includes('[FAIL]')) pre.className = 'fail';
+        else if (msg.includes('[WARN]')) pre.className = 'warn';
+        else if (msg.includes('[DONE]')) pre.className = 'success';
+        ui.logContainer.appendChild(pre);
+        ui.logCount.textContent = ui.logContainer.children.length;
+        ui.logContainer.scrollTop = ui.logContainer.scrollHeight;
+    }
+
+    // ==================== 启动 ====================
+    fetch('/ai_status').then(r => r.json()).then(s => {
+        const ok = s.configured;
+        ui.aiStatus.innerHTML = `<span class="dot" style="background:${ok ? 'var(--success)' : 'var(--warning)'};"></span><span class="${ok ? 'status-ok' : 'status-warn'}">${ok ? 'AI 就绪' : 'AI 未配置'}</span>`;
+        ui.aiStatus.title = ok ? `模型: ${s.model}` : '请在 .env 中配置 AI_API_KEY';
+        if (!ok) {
+            toast('AI 未配置，仅"仅原文"模式可用', 'warning', 5000);
+        }
+    }).catch(() => {
+        ui.aiStatus.innerHTML = '<span class="dot" style="background: var(--danger);"></span><span class="status-err">后端无响应</span>';
+    });
+
+    toggleUploadMode();
+    </script>
+</body>
+</html>

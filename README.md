@@ -1,258 +1,215 @@
-# Markdown to PDF Converter with AI Translation / 带AI翻译的Markdown转PDF转换器
+# AI 文档翻译中心
 
-[English](#english) | [中文](#中文)
+> 把 Markdown 批量翻译成多语言 PDF。零配置、开箱即用、支持双语对照。
 
----
+[English](#english) · [中文](#中文)
 
-## English
-
-A Flask-based web service that converts Markdown files to PDF format with support for Chinese language and AI-powered translation to multiple languages.
-
-### Features
-
-- Convert Markdown files to PDF
-- Support for Chinese display and typesetting
-- AI-powered translation to multiple languages (English, Chinese, French, Russian, Spanish, Arabic, etc.)
-- Customizable style options
-- Batch conversion (upload ZIP files)
-- Preview functionality for both original and translated documents
-- Bilingual side-by-side comparison view
-- Web-based user interface
-- Multi-language support (Chinese/English)
-
-### Quick Start
-
-#### Using Docker (Recommended)
-
-Build and start the service:
-
-```bash
-docker-compose up --build
-```
-
-Then access `http://localhost:8000`
-
-#### Local Run
-
-1. Install dependencies:
-
-```bash
-pip install flask pandas pypdf pypandoc weasyprint requests
-```
-
-2. Install system dependencies:
-   - pandoc
-   - texlive-xetex
-   - texlive-lang-chinese
-
-3. Run the application:
-
-```bash
-python ai_translator.py
-```
-
-### Usage Instructions
-
-1. Open your browser and access the service address
-2. Select the Markdown file or ZIP package containing Markdown files to convert
-3. Choose target language for translation
-4. Set conversion options (such as page size, margins, fonts, etc.)
-5. Click the convert button to start conversion
-6. Download the results after conversion is complete
-
-### Configuration
-
-To use the AI translation feature, you need to configure the following environment variables in [ai_translator.py](file:///d:/GUOSHIYIN/github%E4%BB%A3%E7%A0%81/markdown2pdf-trans/ai_translator.py):
-- `AI_API_URL`: Your AI service API endpoint
-- `AI_API_KEY`: Your API key
-- `AI_MODEL`: The model to use for translation
-
-### Screenshots
-
-![Screenshot 1](img/1.png)
-![Screenshot 2](img/2.png)
-![Screenshot 3](img/3.png)
-
-### Technical Architecture
-
-This project uses a modern technology stack to provide reliable document conversion services with AI translation capabilities:
-
-#### Backend Technologies
-- **Python 3.12**: Main programming language
-- **Flask**: Lightweight web framework for building RESTful APIs
-- **pypandoc**: Python wrapper for Pandoc, used for Markdown to HTML conversion
-- **WeasyPrint**: HTML to PDF converter with excellent CSS support
-- **pypdf**: PDF processing library for additional PDF operations
-- **pandas**: Data processing library for handling structured data in documents
-- **requests**: HTTP library for AI translation API calls
-
-#### Frontend Technologies
-- **Bootstrap 5**: Modern CSS framework for responsive design
-- **Vanilla JavaScript**: Client-side scripting for dynamic interactions
-- **AJAX**: Asynchronous communication with backend APIs
-- **HTML5/CSS3**: Modern markup and styling
-
-#### System Dependencies
-- **Pandoc**: Universal document converter (essential for Markdown processing)
-- **TeX Live**: Typesetting system for high-quality document rendering
-- **XeLaTeX**: LaTeX engine with Unicode and modern font support
-- **Chinese Fonts**: Support for Chinese character rendering
-
-#### Key Features
-1. **AI Translation**: Powered by large language models for high-quality translation
-2. **Asynchronous Processing**: Long-running conversion tasks are processed in the background
-3. **Real-time Progress Tracking**: Users can monitor conversion progress and view logs
-4. **Live Preview**: Preview functionality to see how documents will look before conversion
-5. **Batch Processing**: Support for ZIP file uploads containing multiple documents
-6. **Custom Styling**: Extensive customization options for fonts, colors, margins, etc.
-7. **Multi-language UI**: Support for both Chinese and English interfaces
-8. **Multiple Export Modes**: Original, translated, or bilingual side-by-side PDFs
-9. **Error Handling**: Comprehensive error handling and user feedback
-
-### API Endpoints
-
-- `POST /upload`: Upload files for conversion
-- `POST /convert`: Start the conversion process
-- `GET /status/<task_id>`: Check conversion status
-- `GET /preview/<task_id>`: Generate document preview
-- `GET /download/<task_id>`: Download conversion results
-
-### License
-
-[Apache License 2.0](LICENSE)
+![Hero](img/hero.png)
 
 ---
 
 ## 中文
 
-一个基于 Flask 的 Web 服务，可以将 Markdown 文件转换为 PDF 格式，支持中文排版和AI驱动的多语言翻译。
+### ✨ 核心特性
 
-### 功能特点
+- **批量翻译**：上传 ZIP / 文件夹 / 单个 `.md`，自动并发处理
+- **多语言**：英 / 中 / 法 / 俄 / 西 / 阿，文件名也会翻译
+- **三种导出模式**：仅原文 / 仅译文 / 双语对照（左右并排 PDF）
+- **实时预览**：上传即可看到原文 + 译文 PDF
+- **任务控制**：暂停 / 继续 / 结束，失败可重试
+- **智能缓存**：相同内容不重复调用 AI，节省费用
+- **路径安全**：防 zip slip、防路径遍历
+- **主题预设**：默认 / 学术 / 商务 / 暗黑 + 自定义颜色
+- **暗色模式**：随系统或手动切换
+- **拖拽上传**：拖文件即可
 
-- 将 Markdown 文件转换为 PDF
-- 支持中文显示和排版
-- AI驱动的多语言翻译（英语、中文、法语、俄语、西班牙语、阿拉伯语等）
-- 支持自定义样式选项
-- 支持批量转换（上传 ZIP 文件）
-- 支持原文和译文预览功能
-- 双语并排对比视图
-- 基于 Web 的用户界面
-- 支持中英文双语界面
+### 📸 截图
 
-### 快速开始
+| 浅色模式 | 暗色模式 |
+|---|---|
+| ![Light](img/ui_v3_light.png) | ![Dark](img/ui_v3_dark.png) |
 
-#### 使用 Docker（推荐）
+### 🚀 快速开始
 
-构建并启动服务：
+#### 方式一：Docker（推荐）
 
 ```bash
+git clone https://github.com/<your-name>/markdown2pdf-trans.git
+cd markdown2pdf-trans
+cp .env.example .env       # 填入你的 AI_API_KEY 等
 docker-compose up --build
 ```
 
-然后访问 `http://localhost:8000`
+打开 http://localhost:5000
 
-#### 本地运行
-
-1. 安装依赖：
+#### 方式二：本地运行
 
 ```bash
-pip install flask pandas pypdf pypandoc weasyprint requests
+# 1. 装 Python 依赖
+pip install -r requirements.txt
+
+# 2. 装系统依赖
+# Windows: 下载 pandoc msi 安装；WeasyPrint 见下方说明
+# macOS:   brew install pandoc
+# Linux:   apt install pandoc libpango-1.0-0 libpangoft2-1.0-0
+
+# 3. 配置 AI（不配只能用"仅原文"模式）
+cp .env.example .env
+# 编辑 .env，至少填入 AI_API_KEY
+
+# 4. 启动
+python -m src.app
 ```
 
-2. 安装系统依赖：
-   - pandoc
-   - texlive-xetex
-   - texlive-lang-chinese
+打开 http://127.0.0.1:5000
 
-3. 运行应用：
+### ⚙️ 配置
+
+复制 `.env.example` 为 `.env`，按需修改：
+
+| 变量 | 必填 | 默认 | 说明 |
+|---|---|---|---|
+| `AI_API_URL` | 翻译时 | - | OpenAI 兼容的 chat completions URL |
+| `AI_API_KEY` | 翻译时 | - | 你的 API key |
+| `AI_MODEL` | 翻译时 | - | 模型名（如 `gpt-4o-mini`） |
+| `AI_TIMEOUT` | 否 | 180 | API 超时（秒） |
+| `AI_MAX_RETRIES` | 否 | 3 | 失败重试次数 |
+| `AI_MAX_CONCURRENCY` | 否 | 3 | AI 并发数 |
+| `M2P_MAX_UPLOAD_MB` | 否 | 100 | 上传大小上限 |
+| `M2P_OUTPUT_DIR` | 否 | `./output` | 任务输出目录 |
+| `LOG_LEVEL` | 否 | INFO | 日志级别 |
+
+### 📂 项目结构
+
+```
+markdown2pdf-trans/
+├── src/                      # 源代码
+│   ├── app.py                # Flask 入口（路由）
+│   ├── config.py             # 环境变量 + 主题预设 + Prompt
+│   ├── ai_client.py          # AI 客户端（限流 + 重试）
+│   ├── translation_cache.py  # LRU + TTL 缓存
+│   ├── task_manager.py       # 任务生命周期 + 状态机
+│   ├── renderer.py           # MD → HTML → PDF
+│   ├── uploads.py            # 上传 + ZIP 解压（路径安全）
+│   ├── biligual_align.py     # 双语对照结构化分块
+│   ├── conversion.py         # 转换工作线程
+│   ├── concurrency.py        # 信号量 + 重试装饰器
+│   ├── file_utils.py         # 文件工具
+│   ├── static/               # logo / favicon
+│   └── templates/
+│       └── index.html        # UI 模板
+├── tests/                    # 38 个测试用例
+├── img/                      # 截图 + 品牌资产
+├── Docker/
+│   └── Dockerfile            # 镜像构建
+├── .env.example              # 环境变量模板
+├── .gitignore
+├── requirements.txt          # 运行时依赖
+├── requirements-dev.txt      # 开发依赖（含测试）
+├── LICENSE
+├── CHANGELOG.md
+└── README.md
+```
+
+### 🔌 API
+
+| 端点 | 方法 | 说明 |
+|---|---|---|
+| `/` | GET | Web UI |
+| `/ai_status` | GET | AI 服务配置状态 |
+| `/prepare_upload` | POST | 上传文件，返回 task_id |
+| `/preview/original` | POST | 原文 PDF 预览（返回 PDF + X-Page-Count） |
+| `/preview/translated` | POST | 译文 PDF 预览 |
+| `/start_conversion` | POST | 启动批量转换 |
+| `/pause/<task_id>` | POST | 暂停任务 |
+| `/resume/<task_id>` | POST | 恢复任务 |
+| `/stop/<task_id>` | POST | 停止任务 |
+| `/status/<task_id>` | GET | 轮询状态 + 日志 + current_file |
+| `/download/<task_id>` | GET | 下载结果 ZIP |
+
+### ❓ 常见问题
+
+**Q: Pandoc 报错 "No pandoc was found"？**
+A: 这是系统依赖，需要单独装：https://pandoc.org/installing.html
+
+**Q: WeasyPrint 报 "libgobject-2.0-0" 找不到？**
+A: WeasyPrint 需要 GTK 运行时。Windows 用户建议用 Docker 跑，或参考 https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation。Linux 用 `apt install libpango-1.0-0 libpangoft2-1.0-0`。
+
+**Q: AI 没配置也能用吗？**
+A: 可以，**仅原文模式**不依赖 AI。
+
+**Q: 翻译费用高吗？**
+A: 翻译有缓存，相同内容只调一次 AI。可在 `.env` 调整 `AI_MAX_CONCURRENCY` 控制并发。
+
+**Q: 支持哪些大模型？**
+A: 任何兼容 OpenAI Chat Completions 协议的服务：OpenAI、Azure OpenAI、DeepSeek、Anthropic（通过代理）、本地 Ollama（通过 one-api 代理）等。
+
+### 🧪 测试
 
 ```bash
-python ai_translator.py
+pip install -r requirements-dev.txt
+pytest tests/ -v
 ```
 
-### 使用说明
+38 个测试覆盖：缓存、文件读取、分块对齐、路径安全、上传大小、状态机、限流、重试、端到端流程。
 
-1. 打开浏览器访问服务地址
-2. 选择要转换的 Markdown 文件或包含 Markdown 文件的 ZIP 包
-3. 选择翻译的目标语言
-4. 设置转换选项（如页面大小、边距、字体等）
-5. 点击转换按钮开始转换
-6. 转换完成后下载结果
+### 📦 部署建议
 
-### 配置
+- **个人/小团队**：直接 Docker compose
+- **生产环境**：建议 nginx + gunicorn + systemd
+- **持久化**：将 `output/` 目录挂载到卷
+- **清理**：任务目录 1 天后自动清理，可在 `.env` 调整 `M2P_TASK_TTL_SECONDS`
 
-要使用AI翻译功能，您需要在 [ai_translator.py](file:///d:/GUOSHIYIN/github%E4%BB%A3%E7%A0%81/markdown2pdf-trans/ai_translator.py) 中配置以下环境变量：
-- `AI_API_URL`：您的AI服务API端点
-- `AI_API_KEY`：您的API密钥
-- `AI_MODEL`：用于翻译的模型
+### 📄 License
 
-### 截图
+Apache 2.0
 
-![截图1](img/1.png)
-![截图2](img/2.png)
-![截图3](img/3.png)
+### ⚠️ 免责声明
 
-### 技术架构
-
-该项目使用现代化的技术栈，提供可靠的文档转换服务，并集成了AI翻译功能：
-
-#### 后端技术
-- **Python 3.12**：主要编程语言
-- **Flask**：用于构建 RESTful API 的轻量级 Web 框架
-- **pypandoc**：Pandoc 的 Python 封装，用于 Markdown 到 HTML 的转换
-- **WeasyPrint**：具有出色 CSS 支持的 HTML 到 PDF 转换器
-- **pypdf**：用于额外 PDF 操作的 PDF 处理库
-- **pandas**：用于处理文档中结构化数据的数据处理库
-- **requests**：用于AI翻译API调用的HTTP库
-
-#### 前端技术
-- **Bootstrap 5**：用于响应式设计的现代 CSS 框架
-- **原生 JavaScript**：用于动态交互的客户端脚本
-- **AJAX**：与后端 API 的异步通信
-- **HTML5/CSS3**：现代标记和样式
-
-#### 系统依赖
-- **Pandoc**：通用文档转换器（Markdown 处理必需）
-- **TeX Live**：高质量文档渲染的排版系统
-- **XeLaTeX**：支持 Unicode 和现代字体的 LaTeX 引擎
-- **中文字体**：支持中文字符渲染
-
-#### 核心特性
-1. **AI翻译**：由大语言模型驱动，提供高质量翻译
-2. **异步处理**：后台处理长时间运行的转换任务
-3. **实时进度跟踪**：用户可以监控转换进度并查看日志
-4. **实时预览**：预览功能可在转换前查看文档外观
-5. **批量处理**：支持包含多个文档的 ZIP 文件上传
-6. **自定义样式**：提供丰富的字体、颜色、边距等自定义选项
-7. **多语言界面**：支持中英文界面
-8. **多种导出模式**：原文、译文或双语并排PDF
-9. **错误处理**：全面的错误处理和用户反馈
-
-### API 接口
-
-- `POST /upload`：上传文件进行转换
-- `POST /convert`：开始转换过程
-- `GET /status/<task_id>`：检查转换状态
-- `GET /preview/<task_id>`：生成文档预览
-- `GET /download/<task_id>`：下载转换结果
-
-### 许可证
-
-[Apache License 2.0](LICENSE)
-
-## 💖 支持作者
-
-如果你觉得这个项目对你有帮助，欢迎通过下方二维码赞赏支持作者的持续开发！
-
-![赞赏码](img/dashang.png)
-
-## ⚠️ 免责声明
-
-本软件仅供学习和研究使用。使用者需要：
-
+本项目仅供学习和研究使用。使用者需：
 - 遵守相关法律法规
 - 尊重知识产权
 - 不得用于商业用途
 - 对使用本软件产生的任何后果自行承担责任
 
-⭐ 如果这个项目对你有帮助，请给个Star支持一下！ 💡 有商业化想法？欢迎交流合作，共同探索AI写作的无限可能！
+---
+
+## English
+
+A Flask-based web service that converts Markdown to PDF with AI-powered multi-language translation.
+
+### Features
+
+- Batch translation of Markdown files (ZIP / folder / single file)
+- 6 languages: English, Chinese, French, Russian, Spanish, Arabic
+- Three export modes: original / translated / bilingual side-by-side
+- Live PDF preview before conversion
+- Task control: pause / resume / stop / retry
+- Translation cache (LRU + TTL) saves API cost
+- Path safety: zip slip & traversal blocked
+- 4 theme presets + custom colors
+- Dark mode (auto / manual)
+- Drag & drop upload
+
+### Quick Start
+
+```bash
+git clone https://github.com/<your-name>/markdown2pdf-trans.git
+cd markdown2pdf-trans
+cp .env.example .env       # fill in your AI_API_KEY
+docker-compose up --build  # or: pip install -r requirements.txt && python -m src.app
+```
+
+Open http://localhost:5000
+
+### API
+
+See [Chinese section above](#-api) for full endpoint list.
+
+### License
+
+Apache 2.0
+
+### Disclaimer
+
+For learning and research only. Users must comply with applicable laws, respect intellectual property, and bear all responsibility for outcomes.

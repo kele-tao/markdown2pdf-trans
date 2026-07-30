@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile
+    container_name: m2p-app
+    ports:
+      - "5000:5000"
+    volumes:
+      # 持久化任务输出（失败可下载、跨重启可恢复）
+      - ./output:/app/output
+      # 允许外部传入 .env
+      - ./.env:/app/.env:ro
+    environment:
+      PYTHONIOENCODING: UTF-8
+      M2P_OUTPUT_DIR: /app/output
+    restart: unless-stopped
