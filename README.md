@@ -24,7 +24,7 @@
 ```bash
 python -m pip install -r requirements.txt
 cp .env.example .env          # 可选：填入 AI_API_KEY；不填则进入离线演示模式
-python -m src.app             # 或 python main.py
+python -m src.app             # 或 python main.py / python src/app.py
 ```
 
 打开 <http://127.0.0.1:5000>。

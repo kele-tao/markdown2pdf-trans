@@ -1,16 +1,25 @@
 """Flask 应用入口。
 
-用法：
-- `python -m src.app`  （或 `python src/app.py`）
-- 生产环境：`waitress-serve --port 5000 src.app:app`
+用法（三种均可）：
+- `python -m src.app`      （推荐，包内相对导入正常）
+- `python main.py`
+- `python src/app.py`      （脚本直跑；下方会自动把项目根加入 sys.path 并切到绝对导入）
+
+生产环境：`waitress-serve --port 5000 src.app:app`
 """
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
-from .app_factory import create_app, get_manager  # noqa: F401
-from .config import APP_VERSION
-from .core.settings_store import get_settings
+if __package__ in (None, ""):  # 直接以脚本方式运行（python src/app.py）
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    __package__ = "src"  # noqa: A001
+
+from .app_factory import create_app, get_manager  # noqa: E402,F401
+from .config import APP_VERSION  # noqa: E402
+from .core.settings_store import get_settings  # noqa: E402
 
 app = create_app()
 
