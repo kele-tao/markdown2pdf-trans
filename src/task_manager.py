@@ -234,6 +234,10 @@ class Task:
                 return False
             self.stop_event.set()
             self.pause_event.set()
+            # 立即进入 STOPPING，让界面马上有反馈；工作线程随后落到 STOPPED
+            if self.state in (TaskState.RUNNING, TaskState.PAUSED):
+                self.state = TaskState.STOPPING
+                self.updated_at = time.time()
             self.logs.append({"ts": round(time.time(), 3), "level": "warn", "message": "任务已被用户取消。"})
         self.persist()
         return True

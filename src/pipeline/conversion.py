@@ -41,6 +41,13 @@ def _log(task: Task, message: str, level: str = "info") -> None:
     task.append_log(message, level)
 
 
+def _check_stop(task: Task) -> None:
+    """在耗时工序之间插检查点：暂停/取消都能尽快生效，而不是等整篇渲染完。"""
+    if task.stop_event.is_set():
+        raise WorkerStopped()
+    task.wait_if_paused()
+
+
 def _collect_md_files(source_dir: Path) -> list[Path]:
     return sorted(
         (path for path in source_dir.rglob("*.md") if not path.name.startswith("._")),
@@ -152,6 +159,7 @@ def _run(task: Task, payload: dict[str, Any], *, retry_files: Iterable[str] | No
             translated_md: Optional[str] = None
             translated_stem = file_path.stem
 
+            _check_stop(task)
             if needs_translate:
                 translated_md, blocks_total, blocks_translated, warnings = _translate_file(
                     task, original_md, file_path, language, options, glossary_entries
@@ -167,16 +175,19 @@ def _run(task: Task, payload: dict[str, Any], *, retry_files: Iterable[str] | No
                 translated_stem = _translate_stem(task, original_md, file_path, language)
                 entry.translated_name = f"{translated_stem}.pdf"
 
+            _check_stop(task)
             if export_mode in ("original", "bilingual"):
                 out = result_dir / "original_pdfs" / Path(rel_path).with_suffix(".pdf")
                 _render(task, original_md, file_path, out, options, language, layout="none")
                 entry.original_pages = get_pdf_page_count(out)
 
+            _check_stop(task)
             if needs_translate and translated_md is not None:
                 out = result_dir / "translated_pdfs" / Path(rel_path).parent / f"{translated_stem}.pdf"
                 _render(task, translated_md, file_path, out, options, language, layout="none")
                 entry.translated_pages = get_pdf_page_count(out)
 
+            _check_stop(task)
             if export_mode == "bilingual" and translated_md is not None:
                 out = result_dir / "bilingual_pdfs" / Path(rel_path).parent / f"{translated_stem}.pdf"
                 out.parent.mkdir(parents=True, exist_ok=True)

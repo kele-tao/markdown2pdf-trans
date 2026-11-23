@@ -95,14 +95,18 @@ def test_toc_html_links_to_heading_anchors():
     assert "toc-l2" in html
 
 
-def test_add_heading_ids_is_stable_and_idempotent():
+def test_add_heading_ids_is_positional_and_idempotent():
+    """目录锚点必须按位置编号（与 extract_headings 一致），原 pandoc id 退到 data-anchor。"""
     html = "<h1>One</h1><h2 id='x'>Two</h2><h3 class='c'>Three</h3>"
     out = add_heading_ids(html)
-    assert 'id="m2p-h-1"' in out
-    assert "id='x'" in out or 'id="x"' in out
-    assert "m2p-h-2" not in out.split("<h3")[0].split("Two")[1]
+    assert 'id="m2p-h-1"' in out and 'id="m2p-h-2"' in out and 'id="m2p-h-3"' in out
+    assert 'data-anchor="x"' in out
     assert "class='c'" in out
-    assert add_heading_ids(out).count("m2p-h-1") == 1
+    # 重复标题也必须拿到不同锚点（否则目录页码会漂移）
+    dup = add_heading_ids("<h1>A</h1><h1>A</h1><h2>A</h2>")
+    assert dup.count('id="m2p-h-') == 3
+    # 再跑一次不会叠加 id
+    assert add_heading_ids(out).count('id="m2p-h-1"') == 1
 
 
 def test_cover_html_escapes_and_renders_meta():

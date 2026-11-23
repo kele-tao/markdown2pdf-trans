@@ -25,6 +25,19 @@ from .rendering.pdf import html_to_pdf_bytes  # noqa: F401
 
 logger = logging.getLogger("m2p.renderer")
 
+_TOC_TITLES = {
+    "chinese": "目录",
+    "english": "Contents",
+    "french": "Sommaire",
+    "russian": "Содержание",
+    "spanish": "Índice",
+    "arabic": "المحتويات",
+}
+
+
+def _toc_title(language: str) -> str:
+    return _TOC_TITLES.get((language or "").strip().casefold(), "Contents")
+
 
 def compose_document_html(
     md_content: str,
@@ -58,7 +71,7 @@ def compose_document_html(
             build_cover_html(title=title, subtitle=subtitle, author=author, date=date)
         )
     if doc.get("toc"):
-        parts.append(build_toc_html(headings, title="目录"))
+        parts.append(build_toc_html(headings, title=_toc_title(target_language)))
     parts.append(f'<main class="m2p-body">{body_html}</main>')
 
     doc_meta = dict(doc)
@@ -144,7 +157,7 @@ def render_bilingual_to_pdf(
             )
         )
     if doc.get("toc"):
-        parts.append(build_toc_html(headings, title="目录"))
+        parts.append(build_toc_html(headings, title=_toc_title(target_language)))
     parts.append(f'<main class="m2p-body">{body}</main>')
     pdf = html_to_pdf_bytes(
         "".join(parts),

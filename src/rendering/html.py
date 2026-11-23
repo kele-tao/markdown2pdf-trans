@@ -95,9 +95,16 @@ def add_heading_ids(html: str) -> str:
     def replacer(match: re.Match[str]) -> str:
         counter["n"] += 1
         level, attrs, body = match.group(1), match.group(2) or "", match.group(3)
-        if re.search(r"\sid\s*=", attrs):
-            return match.group(0)  # 已有 id（pandoc 生成的），保留原值
-        return f'<h{level}{attrs} id="m2p-h-{counter["n"]}">{body}</h{level}>'
+        # 目录锚点必须与 extract_headings 的位置编号一致：统一改写为 m2p-h-N，
+        # 原 pandoc id 保留到 data-anchor，避免文档内跳转锚点彻底丢失。
+        existing = re.search(r"\sid\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", attrs)
+        attrs = re.sub(r"\s*id\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", "", attrs)
+        extra = ""
+        if existing:
+            raw = existing.group(1).strip("\"'")
+            if raw and raw != f"m2p-h-{counter['n']}":
+                extra = f' data-anchor="{raw}"'
+        return f'<h{level}{attrs}{extra} id="m2p-h-{counter["n"]}">{body}</h{level}>'
 
     return re.sub(r"<h([1-6])([^>]*)>(.*?)</h\1>", replacer, html, flags=re.DOTALL)
 
