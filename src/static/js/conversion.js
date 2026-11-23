@@ -73,8 +73,10 @@
     const bar = $("progress-bar");
     bar.classList.toggle("is-paused", data.state === "PAUSED");
     bar.classList.toggle("is-failed", data.state === "FAILURE");
+    const active = ["RUNNING", "PAUSED", "PREPARING", "STOPPING"].includes(data.state);
     $("pause-btn").hidden = data.state !== "RUNNING";
     $("resume-btn").hidden = data.state !== "PAUSED";
+    $("cancel-btn").hidden = !active;
 
     const box = $("log-box");
     (data.logs || []).forEach((entry) => {

@@ -169,6 +169,11 @@ button { cursor: pointer; }
   color: var(--text);
 }
 
+/* 组件自带的 display 会覆盖 [hidden]，这里显式兜底（视图切换依赖它） */
+[hidden] {
+  display: none !important;
+}
+
 .visually-hidden {
   position: absolute !important;
   width: 1px;
