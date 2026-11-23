@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -24,6 +25,30 @@ _HTML_BLOCK_KINDS = frozenset(
 )
 
 MISSING_BLOCK_HTML = '<p class="m2p-missing">（本块未翻译，已保留原文）</p>'
+
+# 块与块之间的哨兵：pandoc 会把 HTML 注释原样输出，用它把整篇 HTML 切回逐块 HTML
+BLOCK_SENTINEL = "<!--M2P-BLOCK-SPLIT-->"
+_SENTINEL_RE = re.compile(r"<!--\s*M2P-BLOCK-SPLIT\s*-->")
+
+
+def _render_blocks(blocks: list[str], render_block: Callable[[str], str]) -> list[str]:
+    """一次 pandoc 调用渲染整篇，再按哨兵切回逐块 HTML。
+
+    切分失败（标记被吞/数量不符）时退化为逐块渲染，保证正确性优先。
+    """
+    if not blocks:
+        return []
+    if len(blocks) == 1:
+        return [render_block(blocks[0]) if blocks[0].strip() else ""]
+    joined = ("\n\n" + BLOCK_SENTINEL + "\n\n").join(block for block in blocks)
+    try:
+        html = render_block(joined)
+    except Exception:
+        return [render_block(block) if block.strip() else "" for block in blocks]
+    parts = _SENTINEL_RE.split(html)
+    if len(parts) != len(blocks):
+        return [render_block(block) if block.strip() else "" for block in blocks]
+    return [part.strip() for part in parts]
 
 
 @dataclass
@@ -74,34 +99,33 @@ def build_bilingual_html(
     if not pairs:
         return ""
 
-    cache: dict[str, str] = {}
-
-    def to_html(text: str) -> str:
-        """块级渲染带缓存：同一块文本只调一次 pandoc（并发生成时显著省时）。"""
-        value = text or ""
-        if not value.strip():
-            return ""
-        cached = cache.get(value)
-        if cached is not None:
-            return cached
+    def render_block(value: str) -> str:
         try:
-            html = render(value, md_file_dir, code_theme, target_language=target_language)
+            return render(value, md_file_dir, code_theme, target_language=target_language)
         except TypeError:  # 兼容仅接受三个位置参数的 renderer
-            html = render(value, md_file_dir, code_theme)
-        cache[value] = html
-        return html
+            return render(value, md_file_dir, code_theme)
+
+    # 整篇一次性交给 pandoc，再用 HTML 注释标记切回块：
+    # 逐个块调用 pandoc 在大文档上会明显拖慢（每块一次进程/解析开销）。
+    original_html = _render_blocks([p.original for p in pairs], render_block)
+    translated_html = _render_blocks([p.translated for p in pairs], render_block)
+
+    def to_html(text: str, index: int, side: list[str]) -> str:
+        if not (text or "").strip():
+            return ""
+        return side[index]
 
     if layout == "stacked":
         parts = ['<section class="m2p-bilingual m2p-bilingual-stack">']
-        for pair in pairs:
+        for index, pair in enumerate(pairs):
             parts.append('<div class="m2p-pair">')
             parts.append(
                 f'<div class="m2p-original"><div class="m2p-bilingual-label">{escape_html(original_label)}</div>'
-                f"{to_html(pair.original)}</div>"
+                f"{to_html(pair.original, index, original_html)}</div>"
             )
             parts.append(
                 f'<div class="m2p-translated"><div class="m2p-bilingual-label">{escape_html(translated_label)}</div>'
-                f"{to_html(pair.translated) or MISSING_BLOCK_HTML}</div>"
+                f"{to_html(pair.translated, index, translated_html) or MISSING_BLOCK_HTML}</div>"
             )
             parts.append("</div>")
         parts.append("</section>")
@@ -111,11 +135,12 @@ def build_bilingual_html(
     #  - 表格单元格里再放表格时 WeasyPrint 排版开销极大（大文档会显著变慢）
     #  - 行容器 break-inside: avoid 保证分页不会把一对原文/译文拆开
     rows = []
-    for pair in pairs:
+    for index, pair in enumerate(pairs):
         rows.append(
             '<div class="m2p-row">'
-            f'<div class="m2p-col m2p-cell-original">{to_html(pair.original)}</div>'
-            f'<div class="m2p-col m2p-cell-translated">{to_html(pair.translated) or MISSING_BLOCK_HTML}</div>'
+            f'<div class="m2p-col m2p-cell-original">{to_html(pair.original, index, original_html)}</div>'
+            f'<div class="m2p-col m2p-cell-translated">'
+            f"{to_html(pair.translated, index, translated_html) or MISSING_BLOCK_HTML}</div>"
             "</div>"
         )
     return f'<div class="m2p-bilingual m2p-bilingual-side">{"".join(rows)}</div>'
