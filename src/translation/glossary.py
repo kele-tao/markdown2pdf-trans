@@ -263,7 +263,7 @@ def heuristic_terms(text: str, max_terms: int) -> list[GlossaryEntry]:
                     continue
                 cjk_counts[gram] = cjk_counts.get(gram, 0) + 1
     for gram, count in cjk_counts.items():
-        if count >= 3:
+        if count >= 2:
             add(gram, 1.5, count)
 
     ranked = sorted(scores, key=lambda term: (-scores[term], order[term]))

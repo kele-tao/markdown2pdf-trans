@@ -16,20 +16,9 @@ from pathlib import Path
 
 import pytest
 
-# 在 import src.app 之前，注入假依赖
-for name, mod in {
-    "weasyprint": (
-        lambda string="", **kw: type("F", (), {"write_pdf": lambda self, stylesheets=None: b"%PDF-1.4 mock"})()
-    ),
-    "pypandoc": (lambda *a, **kw: f"<p>{a[0] if a else kw.get('source','')}</p>"),
-}.items():
-    m = types.ModuleType(name)
-    if name == "weasyprint":
-        m.HTML = mod
-        m.CSS = lambda string="": f"CSS[{string[:20]}]"
-    else:
-        m.convert_text = mod
-    sys.modules.setdefault(name, m)
+# 注意：这里不再向 sys.modules 注入假的 weasyprint / pypandoc。
+# 本文件的用例只覆盖状态机、并发、缓存与上传，不需要渲染依赖；全局注入会污染
+# 同进程内的真实排版测试（表现为 pypdf 无法解析假 PDF）。
 
 
 from src.concurrency import RateLimiter, retry_with_backoff

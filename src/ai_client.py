@@ -71,6 +71,15 @@ _MOCK_LANGUAGE_LABEL = {
     "Arabic": "العربية",
 }
 
+_MOCK_LANG_CODE = {
+    "English": "en",
+    "Chinese": "zh",
+    "French": "fr",
+    "Russian": "ru",
+    "Spanish": "es",
+    "Arabic": "ar",
+}
+
 _MOCK_PREFIX = {
     "French": "【FR】",
     "Russian": "【RU】",
@@ -116,6 +125,8 @@ def _mock_translate_block(payload: str, language: str) -> str:
             pieces.append(text)
         elif block.kind in (BlockKind.CODE, BlockKind.FRONT_MATTER, BlockKind.MATH, BlockKind.HR):
             pieces.append(block.text)
+        elif block.kind is BlockKind.TABLE:
+            pieces.append(_mock_table(block.text, dictionary, label, prefix))
         else:
             pieces.append(_mock_text(block.text, dictionary, label, prefix))
     pieces.append(parsed.trailer)
@@ -130,6 +141,33 @@ def _mock_text(text: str, dictionary: dict[str, str], label: str, prefix: str, h
         # 未命中词典：保留行内代码/链接/公式等受保护片段，只包一层语言标记
         result = _decorate(text, label, prefix, heading)
     return result
+
+
+def _mock_table(text: str, dictionary: dict[str, str], label: str, prefix: str) -> str:
+    """表格必须保持列数/行数：只装饰单元格文本，绝不动 | 骨架。"""
+    marker = f"{prefix}[{label}] " if prefix else f"[{label}] "
+    lines: list[str] = []
+    for index, line in enumerate(text.split("\n")):
+        stripped = line.strip()
+        if not stripped or re.match(r"^\s*\|?[\s:\-|]+\|?\s*$", stripped):
+            lines.append(line)
+            continue
+        cells = line.split("|")
+        decorated = []
+        for cell_index, cell in enumerate(cells):
+            # 首尾空片段是行首/行尾的 |
+            if not cell.strip() or cell_index == 0 or cell_index == len(cells) - 1:
+                decorated.append(cell)
+                continue
+            body = cell.strip()
+            replaced = body
+            for source, target in sorted(dictionary.items(), key=lambda item: -len(item[0])):
+                replaced = replaced.replace(source, target)
+            if replaced == body:
+                replaced = marker + body
+            decorated.append(f" {replaced} ")
+        lines.append("|".join(decorated))
+    return "\n".join(lines)
 
 
 def _decorate(text: str, label: str, prefix: str, heading: bool) -> str:
@@ -160,11 +198,12 @@ def _decorate(text: str, label: str, prefix: str, heading: bool) -> str:
 def _mock_ai_call(system_prompt: str, user_content: str) -> str:
     payload = extract_payload(user_content)
     language = detect_target_language(system_prompt)
-    if "文件名" in system_prompt or "文件名翻译" in system_prompt:
+    if "文件名翻译助手" in system_prompt:
         stem = payload.split("\n")[-1].replace("需要翻译的部分：", "").strip() or payload.strip()
-        translated = _mock_translate_block(stem, language).strip().split("\n")[0]
-        return translated or stem
-    if "术语" in system_prompt:
+        code = _MOCK_LANG_CODE.get(language, language[:2].upper())
+        base_stem = re.sub(r"\s+", "_", stem.strip()) or "document"
+        return f"{base_stem}_{code}" if code else base_stem
+    if "术语抽取助手" in system_prompt:
         return ""
     return _mock_translate_block(payload, language)
 

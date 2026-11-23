@@ -1,19 +1,29 @@
-version: "3.9"
-
 services:
   app:
     build:
       context: .
       dockerfile: Docker/Dockerfile
-    container_name: m2p-app
+    image: markdown2pdf-trans:4.0.0
+    container_name: m2p-trans
     ports:
       - "5000:5000"
     volumes:
-      # 持久化任务输出（失败可下载、跨重启可恢复）
-      - ./output:/app/output
-      # 允许外部传入 .env
+      # 数据目录：任务注册表、输出产物、运行期配置，必须挂载以保证重启不丢历史
+      - ./data:/app/data
+      # 可选：挂载自定义字体（.ttf/.otf），实现"换机器输出一致"
+      - ./fonts:/app/fonts:ro
+      # 可选：通过 .env 注入初始 AI 配置（界面里也能改，无需重启）
       - ./.env:/app/.env:ro
     environment:
       PYTHONIOENCODING: UTF-8
-      M2P_OUTPUT_DIR: /app/output
+      M2P_DATA_DIR: /app/data
+      M2P_PORT: "5000"
+      LOG_LEVEL: INFO
+      # M2P_LOG_FORMAT: json
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

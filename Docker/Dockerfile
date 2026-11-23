@@ -1,35 +1,53 @@
-# 使用官方 Python 3.12 基础镜像
-FROM python:3.12.2
+# syntax=docker/dockerfile:1
+# ---- 构建阶段：仅装 Python 依赖，便于利用层缓存 ----
+FROM python:3.12-slim AS builder
 
-# 替换为清华 Debian APT 源
-RUN sed -i 's|http://deb.debian.org/debian|https://mirrors.tuna.tsinghua.edu.cn/debian|g' /etc/apt/sources.list.d/debian.sources && \
-    sed -i 's|http://security.debian.org/debian-security|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# pip 清华源
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --prefix=/install -r requirements.txt
 
-# 系统依赖：pandoc + WeasyPrint GTK 运行时 + 中文字体
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# ---- 运行阶段 ----
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    M2P_DATA_DIR=/app/data \
+    M2P_FONT_DIR=/app/fonts \
+    LOG_LEVEL=INFO \
+    M2P_PORT=5000
+
+# 系统依赖：
+#   pandoc                Markdown → HTML
+#   libpango/libharfbuzz  WeasyPrint 排版与文本塑形（阿拉伯语需要 harfbuzz）
+#   fonts-noto-cjk        中日韩字体
+#   fonts-noto-core       Noto 基础字体（含阿拉伯语 Naskh/Naskh Arabic）
+RUN apt-get update && apt-get install -y --no-install-recommends \
         pandoc \
         libpango-1.0-0 \
         libpangoft2-1.0-0 \
         libharfbuzz0b \
+        libharfbuzz-subset0 \
         libfontconfig1 \
-        fonts-noto-cjk && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+        libgdk-pixbuf-2.0-0 \
+        shared-mime-info \
+        fonts-noto-cjk \
+        fonts-noto-core \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Python 依赖
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
-# 拷贝项目代码
+COPY --from=builder /install /usr/local
 WORKDIR /app
 COPY . /app
 
-ENV PYTHONIOENCODING=UTF-8
+RUN mkdir -p /app/data && useradd --create-home --uid 10001 m2p && chown -R m2p:m2p /app
+USER m2p
 
 EXPOSE 5000
 
-# 启动：注意用 -m 让 src 当包
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:5000/api/health || exit 1
+
 CMD ["python", "-m", "src.app"]

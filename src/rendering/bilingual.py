@@ -23,6 +23,8 @@ _HTML_BLOCK_KINDS = frozenset(
     {BlockKind.HEADING, BlockKind.PARAGRAPH, BlockKind.LIST, BlockKind.TABLE, BlockKind.BLOCKQUOTE}
 )
 
+MISSING_BLOCK_HTML = '<p class="m2p-missing">（本块未翻译，已保留原文）</p>'
+
 
 @dataclass
 class Pair:
@@ -72,13 +74,22 @@ def build_bilingual_html(
     if not pairs:
         return ""
 
+    cache: dict[str, str] = {}
+
     def to_html(text: str) -> str:
-        if not (text or "").strip():
+        """块级渲染带缓存：同一块文本只调一次 pandoc（并发生成时显著省时）。"""
+        value = text or ""
+        if not value.strip():
             return ""
+        cached = cache.get(value)
+        if cached is not None:
+            return cached
         try:
-            return render(text, md_file_dir, code_theme, target_language=target_language)
+            html = render(value, md_file_dir, code_theme, target_language=target_language)
         except TypeError:  # 兼容仅接受三个位置参数的 renderer
-            return render(text, md_file_dir, code_theme)
+            html = render(value, md_file_dir, code_theme)
+        cache[value] = html
+        return html
 
     if layout == "stacked":
         parts = ['<section class="m2p-bilingual m2p-bilingual-stack">']
@@ -90,21 +101,21 @@ def build_bilingual_html(
             )
             parts.append(
                 f'<div class="m2p-translated"><div class="m2p-bilingual-label">{escape_html(translated_label)}</div>'
-                f"{to_html(pair.translated) or '<p class="m2p-missing">（本块未翻译，已保留原文）</p>'}</div>"
+                f"{to_html(pair.translated) or MISSING_BLOCK_HTML}</div>"
             )
             parts.append("</div>")
         parts.append("</section>")
         return "".join(parts)
 
-    rows: list[str] = []
+    # 并排版式用 float 两列，而非嵌套表格：
+    #  - 表格单元格里再放表格时 WeasyPrint 排版开销极大（大文档会显著变慢）
+    #  - 行容器 break-inside: avoid 保证分页不会把一对原文/译文拆开
+    rows = []
     for pair in pairs:
         rows.append(
-            "<tr>"
-            f'<td class="m2p-cell-original">{to_html(pair.original)}</td>'
-            f'<td class="m2p-cell-translated">{to_html(pair.translated)}</td>'
-            "</tr>"
+            '<div class="m2p-row">'
+            f'<div class="m2p-col m2p-cell-original">{to_html(pair.original)}</div>'
+            f'<div class="m2p-col m2p-cell-translated">{to_html(pair.translated) or MISSING_BLOCK_HTML}</div>'
+            "</div>"
         )
-    return (
-        '<table class="m2p-bilingual-side"><colgroup><col style="width:50%"><col style="width:50%"></colgroup>'
-        f'<tbody>{"".join(rows)}</tbody></table>'
-    )
+    return f'<div class="m2p-bilingual m2p-bilingual-side">{"".join(rows)}</div>'

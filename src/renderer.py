@@ -14,6 +14,7 @@ from .rendering.bilingual import build_bilingual_html
 from .rendering.css import get_css_style, merge_style, page_size_css  # noqa: F401
 from .rendering.html import (  # noqa: F401
     RenderError,
+    add_heading_ids,
     build_cover_html,
     build_toc_html,
     extract_headings,
@@ -49,6 +50,7 @@ def compose_document_html(
         style.get("code_theme", "kate"),
         target_language=target_language,
     )
+    body_html = add_heading_ids(body_html)
 
     parts: list[str] = []
     if doc.get("cover"):

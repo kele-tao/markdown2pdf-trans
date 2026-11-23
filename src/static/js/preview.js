@@ -21,7 +21,8 @@
     const el = elements();
     runtime.busy = busy;
     el.loading.hidden = !busy;
-    el.empty.hidden = busy || !!runtime.blob;
+    // 无 PDF 且不在加载中时，展示空态提示
+    el.empty.hidden = busy || Boolean(runtime.blob);
     el.frame.hidden = busy || !runtime.blob;
     if (message) {
       const desc = el.loading.querySelector(".preview-empty-desc");
@@ -42,6 +43,7 @@
     runtime.blob = blob;
     runtime.url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
     el.frame.src = runtime.url;
+    el.loading.hidden = true;
     el.frame.hidden = false;
     el.empty.hidden = true;
     el.pages.textContent = (pageCount || "—") + " 页" + (elapsed ? " · " + elapsed + " ms" : "");
@@ -93,6 +95,7 @@
     } finally {
       if (seq === runtime.seq) setBusy(false);
     }
+
   }
 
   function setMode(mode) {

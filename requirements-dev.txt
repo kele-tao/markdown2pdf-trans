@@ -1,4 +1,5 @@
-# 开发时额外安装
+# 开发与测试依赖
 -r requirements.txt
 pytest>=8.0
-playwright>=1.40
+pytest-timeout>=2.3
+playwright>=1.44

@@ -15,6 +15,7 @@ logger = logging.getLogger("m2p.render")
 _IMG_RE = re.compile(r'!\[(?P<alt>[^\]]*)\]\((?P<url>[^)\s]+)(?P<title>\s+("[^"]*"|\x27[^\x27]*\x27))?\s*\)')
 _HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})[ \t]+(?P<text>.*?)[ \t]*#*[ \t]*$")
 _HTML_ESCAPE = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}
+_PANDOC_VERSION: tuple[int, int] | None = None
 
 
 class RenderError(Exception):
@@ -83,8 +84,22 @@ def extract_headings(md_content: str) -> list[dict[str, Any]]:
         text = match.group("text").strip()
         if not text:
             continue
-        headings.append({"level": level, "text": text, "id": f"m2p-h-{index}", "line": index})
+        headings.append({"level": level, "text": text, "id": f"m2p-h-{len(headings) + 1}", "line": index})
     return headings
+
+
+def add_heading_ids(html: str) -> str:
+    """给 pandoc 输出的 h1..h6 按文档顺序补 id，供目录 target-counter 精确定位。"""
+    counter = {"n": 0}
+
+    def replacer(match: re.Match[str]) -> str:
+        counter["n"] += 1
+        level, attrs, body = match.group(1), match.group(2) or "", match.group(3)
+        if re.search(r"\sid\s*=", attrs):
+            return match.group(0)  # 已有 id（pandoc 生成的），保留原值
+        return f'<h{level}{attrs} id="m2p-h-{counter["n"]}">{body}</h{level}>'
+
+    return re.sub(r"<h([1-6])([^>]*)>(.*?)</h\1>", replacer, html, flags=re.DOTALL)
 
 
 def build_toc_html(headings: list[dict[str, Any]], *, title: str = "目录") -> str:
@@ -145,7 +160,7 @@ def md_to_html(
     processed = preprocess_markdown_images(md_content, md_file_dir)
     allowed = {"kate", "pygments", "tango", "monokai", "zenburn", "espresso", "breezedark", "haddock"}
     style = code_theme if code_theme in allowed else "kate"
-    extra_args = [f"--highlight-style={style}", f"--metadata=lang:{_lang_tag(target_language)}"]
+    extra_args = [_highlight_arg(style), f"--metadata=lang:{_lang_tag(target_language)}"]
     try:
         return pypandoc.convert_text(
             source=processed,
@@ -155,6 +170,28 @@ def md_to_html(
         )
     except Exception as exc:  # pypandoc 未定义专用异常
         raise RenderError(f"Pandoc 转换失败：{exc}", kind="pandoc") from exc
+
+
+def _highlight_arg(style: str) -> str:
+    """pandoc 3.2+ 用 --syntax-highlighting，旧版用 --highlight-style。"""
+    major, minor = _pandoc_version()
+    if (major, minor) >= (3, 2):
+        return f"--syntax-highlighting={style}"
+    return f"--highlight-style={style}"
+
+
+def _pandoc_version() -> tuple[int, int]:
+    global _PANDOC_VERSION
+    if _PANDOC_VERSION is None:
+        try:
+            import pypandoc
+
+            raw = str(pypandoc.get_pandoc_version())
+            parts = re.findall(r"\d+", raw)
+            _PANDOC_VERSION = (int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+        except Exception:  # pragma: no cover
+            _PANDOC_VERSION = (3, 0)
+    return _PANDOC_VERSION
 
 
 def _lang_tag(language: str) -> str:

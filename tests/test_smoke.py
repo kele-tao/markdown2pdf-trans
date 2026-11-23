@@ -13,21 +13,28 @@ from unittest import mock
 
 import pytest
 
-# 在导入 src.app 之前，注入一个假的 weasyprint（避免真去 load GTK）
-_fake_weasyprint = types.ModuleType("weasyprint")
-_fake_weasyprint.HTML = lambda string="", **kw: type("F", (), {"write_pdf": lambda self, stylesheets=None: b"%PDF-1.4 mock"})()
-_fake_weasyprint.CSS = lambda string="": f"CSS[{string[:20]}]"
-sys.modules.setdefault("weasyprint", _fake_weasyprint)
+def _fake_modules():
+    """构造假的 weasyprint / pypandoc，仅在单个测试内生效（monkeypatch 自动还原）。
 
-# fake pypandoc
-_fake_pypandoc = types.ModuleType("pypandoc")
-_fake_pypandoc.convert_text = lambda *a, **kw: f"<p>{a[0] if a else kw.get('source','')}</p>"
-_fake_pypandoc.get_pandoc_version = lambda: "99.0"
-sys.modules.setdefault("pypandoc", _fake_pypandoc)
+    不能在模块导入期 setdefault 到 sys.modules：那会污染同进程内其它需要真实
+    WeasyPrint/pandoc 的测试（真实排版用例会拿到假 PDF 而解析失败）。
+    """
+    fake_weasyprint = types.ModuleType("weasyprint")
+    fake_weasyprint.HTML = lambda string="", **kw: type(
+        "F", (), {"write_pdf": lambda self, stylesheets=None: b"%PDF-1.4 mock"}
+    )()
+    fake_weasyprint.CSS = lambda string="": f"CSS[{string[:20]}]"
+
+    fake_pypandoc = types.ModuleType("pypandoc")
+    fake_pypandoc.convert_text = lambda *a, **kw: f"<p>{a[0] if a else kw.get('source', '')}</p>"
+    fake_pypandoc.get_pandoc_version = lambda: "99.0"
+    return {"weasyprint": fake_weasyprint, "pypandoc": fake_pypandoc}
 
 
 @pytest.fixture(autouse=True)
 def mock_heavy_deps(monkeypatch, tmp_path):
+    for name, module in _fake_modules().items():
+        monkeypatch.setitem(sys.modules, name, module)
     monkeypatch.setenv("M2P_OUTPUT_DIR", str(tmp_path / "out"))
     # 给一个假的 AI 配置（避免业务逻辑在 start_conversion 处被 400 拒绝）
     monkeypatch.setenv("AI_API_URL", "http://test-ai")

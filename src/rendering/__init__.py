@@ -3,6 +3,7 @@ from .css import get_css_style, merge_style, page_size_css  # noqa: F401
 from .fonts import font_status, resolve_font_family  # noqa: F401
 from .html import (  # noqa: F401
     RenderError,
+    add_heading_ids,
     build_cover_html,
     build_toc_html,
     escape_html,

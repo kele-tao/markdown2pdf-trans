@@ -107,18 +107,21 @@ def get_css_style(
     cover_page_css = ""
     if cover:
         cover_page_css = """
-    @page cover { margin: 0; @bottom-center { content: ''; } @top-center { content: ''; } @bottom-left { content: ''; } }
-    .m2p-cover { page: cover; height: 100vh; display: flex; flex-direction: column;
-                 justify-content: center; padding: 3cm 2.4cm; box-sizing: border-box;
-                 break-after: page; }
-    .m2p-cover .cover-kicker { font-size: 9px; letter-spacing: .28em; text-transform: uppercase;
-                               color: %s; margin-bottom: 18mm; }
-    .m2p-cover h1.cover-title { font-size: 30pt; line-height: 1.25; margin: 0 0 6mm;
-                                color: %s; font-weight: 700; border: none; padding: 0; break-before: avoid; }
-    .m2p-cover .cover-subtitle { font-size: 14pt; color: %s; margin-bottom: 24mm; line-height: 1.5; }
-    .m2p-cover .cover-meta { font-size: 10pt; color: %s; line-height: 1.9; }
-    .m2p-cover .cover-rule { width: 36mm; height: 3pt; background: %s; margin: 0 0 10mm; }
-    """ % (muted, heading_color, muted, muted, accent)
+    @page cover { margin: 0; counter-reset: page 0;
+                  @bottom-center { content: ''; } @top-center { content: ''; }
+                  @bottom-left { content: ''; } @top-right { content: ''; } }
+    .m2p-cover { page: cover; min-height: 100vh; display: block;
+                 padding: 30vh 2.6cm 3cm; box-sizing: border-box; break-after: page;
+                 text-align: %s; }
+    .m2p-cover .cover-kicker { font-size: 8.5pt; letter-spacing: .3em; text-transform: uppercase;
+                               color: %s; margin-bottom: 14mm; }
+    .m2p-cover .cover-rule { width: 32mm; height: 2.5pt; background: %s; margin: 0 0 9mm; }
+    .m2p-cover h1.cover-title { font-size: 28pt; line-height: 1.28; margin: 0 0 7mm;
+                                color: %s; font-weight: 700; border: none; padding: 0;
+                                break-before: avoid; break-after: avoid; }
+    .m2p-cover .cover-subtitle { font-size: 13pt; color: %s; margin-bottom: 22mm; line-height: 1.55; }
+    .m2p-cover .cover-meta { font-size: 9.5pt; color: %s; line-height: 1.9; }
+    """ % ("right" if rtl else "left", muted, accent, heading_color, muted, muted)
 
     toc_css = ""
     if toc:
@@ -128,7 +131,7 @@ def get_css_style(
     .m2p-toc ul { list-style: none; padding-left: 0; margin: 0; }
     .m2p-toc li { margin: 0; padding: 1.6mm 0; border-bottom: 0.4pt dotted %s; }
     .m2p-toc a { color: %s; text-decoration: none; }
-    .m2p-toc a::after { content: target-counter(attr(href), page); float: right;
+    .m2p-toc a::after { content: target-counter(attr(href), page, decimal); float: right;
                         color: %s; font-variant-numeric: tabular-nums; }
     .m2p-toc .toc-l2 { padding-left: 6mm; font-size: 10.5pt; }
     .m2p-toc .toc-l3 { padding-left: 12mm; font-size: 10pt; }
@@ -146,8 +149,7 @@ def get_css_style(
     {toc_css}
     html {{ font-size: {font_size}; }}
     body {{ font-family: {font_family}; line-height: {line_height}; color: {text_color};
-            text-align: {align}; direction: {direction}; hyphens: auto;
-            -weasy-hyphens: auto; margin: 0; }}
+            text-align: {align}; direction: {direction}; hyphens: auto; margin: 0; }}
     h1, h2, h3, h4, h5, h6 {{ font-family: {heading_font}; color: {heading_color};
             font-weight: {heading_weight}; line-height: 1.3; text-align: {'right' if rtl else 'left'};
             break-after: avoid; break-inside: avoid; margin: 1.5em 0 .6em; }}
@@ -188,11 +190,14 @@ def get_css_style(
                   margin-top: 2em; padding-top: .6em; }}
     .footnotes ol {{ padding-{'right' if rtl else 'left'}: 1.2em; }}
     .math {{ font-family: "Cambria Math", "Latin Modern Math", serif; }}
-    .m2p-bilingual-side {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
-    .m2p-bilingual-side > tbody > tr {{ break-inside: avoid; }}
-    .m2p-bilingual-side td {{ width: 50%; vertical-align: top; padding: 0 3mm;
-                              border: none; background: transparent; }}
-    .m2p-bilingual-side td + td {{ border-{'right' if rtl else 'left'}: 0.4pt solid {rule_color}; }}
+    .m2p-bilingual-side .m2p-row {{ display: block; break-inside: avoid;
+                                      border-bottom: 0.4pt solid {rule_color}; padding: 2.4mm 0; }}
+    .m2p-bilingual-side .m2p-row::after {{ content: ""; display: block; clear: both; }}
+    .m2p-bilingual-side .m2p-col {{ width: 48%; float: {'right' if rtl else 'left'};
+                                     padding: 0 2.4mm; box-sizing: border-box; }}
+    .m2p-bilingual-side .m2p-cell-translated {{ border-{'right' if rtl else 'left'}: 0.4pt solid {rule_color}; }}
+    .m2p-bilingual-side .m2p-row:last-child {{ border-bottom: none; }}
+    .m2p-missing {{ color: {muted}; font-style: italic; }}
     .m2p-bilingual-block {{ break-inside: avoid; margin: 0 0 .4em; }}
     .m2p-bilingual-stack .m2p-pair {{ break-inside: avoid; margin: 0 0 1.1em; }}
     .m2p-bilingual-stack .m2p-original {{ color: {muted}; font-size: .94em;
