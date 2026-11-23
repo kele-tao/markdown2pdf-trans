@@ -31,7 +31,7 @@ from .validation import validate_translation
 logger = logging.getLogger(__name__)
 
 _META_LINE_RE = re.compile(
-    r"^(?:here is|here's|here are|以下是|译文如下|翻译如下|translation|translated text)\b.*[:：]\s*$",
+    r"^(?:here is|here's|here are|以下是|译文如下|翻译如下|translation|translated text).*[:：]\s*$",
     re.IGNORECASE,
 )
 _OUTER_FENCE_OPEN_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\n]*)$")
@@ -372,8 +372,6 @@ def translate_markdown(
         raise TypeError("md 必须是字符串")
     if options is None:
         raise TypeError("options 不能为空")
-    if not (options.target_language or "").strip():
-        raise ValueError("target_language 不能为空")
 
     document = parse_markdown(md)
     blocks = document.translatable_blocks()
@@ -385,6 +383,17 @@ def translate_markdown(
             blocks_translated=0,
             failed_blocks=[],
         )
+    if options.cancel_event is not None and options.cancel_event.is_set():
+        return TranslationResult(
+            markdown=md,
+            warnings=[f"已取消：全部 {len(blocks)} 块保留原文。"],
+            blocks_total=len(blocks),
+            blocks_translated=0,
+            failed_blocks=[block.number for block in blocks],
+            cancelled=True,
+        )
+    if not (options.target_language or "").strip():
+        raise ValueError("target_language 不能为空")
     if ai_call is None:
         raise ValueError(
             "translate_markdown 需要注入 ai_call(system_prompt, user_content) 才能翻译"

@@ -160,6 +160,11 @@ def test_translate_filename_preserves_extension_and_sanitizes():
     )
     assert with_extension == "guide.md"
 
+    other_extension = translate_filename(
+        "doc.md", "English", ai_call=lambda system, user: "guide.txt"
+    )
+    assert other_extension == "guide.md"
+
     prefixed = translate_filename(
         "doc.md", "English", ai_call=lambda system, user: "Here is the translation: guide"
     )

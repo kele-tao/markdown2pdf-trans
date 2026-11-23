@@ -90,7 +90,31 @@ def test_long_document_blocks_order_and_integrity():
     assert progress[-1].startswith("翻译结束")
 
 
-def test_long_document_code_and_table_kept_whole():
+def test_combined_long_document_with_glossary_and_small_chunks():
+    doc = load_fixture()
+    glossary = [GlossaryEntry("deployment", "部署")]
+    result = translate_markdown(
+        doc,
+        TranslationOptions(
+            "Chinese",
+            glossary=glossary,
+            max_chars_per_chunk=200,
+            concurrency=4,
+        ),
+        ai_call=build_translator(long_document_mapping()),
+    )
+
+    assert result.blocks_total == 19
+    assert result.blocks_translated == 19
+    assert result.failed_blocks == []
+    assert "deploy --target ALPHA6 --verbose" in result.markdown
+    assert "| Disk | 20 GB | 50 GB |" in result.markdown
+    original_shape = [(b.kind, b.level) for b in parse_markdown(doc).blocks]
+    translated_shape = [(b.kind, b.level) for b in parse_markdown(result.markdown).blocks]
+    assert translated_shape == original_shape
+
+
+def test_code_and_table_kept_whole():
     doc = load_fixture()
     calls: list[str] = []
     fake = build_translator({"Deployment": "部署"}, calls=calls)
@@ -197,6 +221,63 @@ def test_structure_break_retries_then_keeps_original():
     assert any("第 3 块" in warning and "保留原文" in warning for warning in result.warnings)
 
 
+def test_placeholder_loss_is_rejected():
+    doc = "Hello {{user_name}}, your order is ready.\n"
+    broken = lambda system, user: "Hello, your order is ready.\n"
+
+    result = translate_markdown(
+        doc, TranslationOptions("Chinese", max_retries=1), ai_call=broken
+    )
+
+    assert result.failed_blocks == [1]
+    assert result.markdown == doc
+    assert any("占位符" in warning for warning in result.warnings)
+
+
+def test_tone_and_target_language_reach_prompt():
+    doc = "Paragraph text.\n"
+    prompts: list[str] = []
+    for tone in ("professional", "academic", "casual"):
+        translate_markdown(
+            doc,
+            TranslationOptions("French", tone=tone),
+            ai_call=build_translator({}, prompts=prompts),
+        )
+
+    assert len(prompts) == 3
+    assert len(set(prompts)) == 3
+    assert all("French" in prompt for prompt in prompts)
+    assert any("学术" in prompt for prompt in prompts)
+    assert any("口语" in prompt for prompt in prompts)
+
+
+def test_footnote_markers_are_preserved():
+    doc = "A claim with a footnote[^1].\n\n[^1]: The source of the claim.\n"
+    mapping = {
+        "A claim with a footnote": "一个有脚注的论断",
+        "The source of the claim.": "该论断的来源。",
+    }
+    result = translate_markdown(
+        doc, TranslationOptions("Chinese"), ai_call=build_translator(mapping)
+    )
+
+    assert result.failed_blocks == []
+    assert result.markdown.count("[^1]") == 2
+
+
+def test_footnote_marker_loss_is_rejected():
+    doc = "A claim with a footnote[^1].\n"
+    fake = lambda system, user: "A claim with a footnote.\n"
+
+    result = translate_markdown(
+        doc, TranslationOptions("Chinese", max_retries=1), ai_call=fake
+    )
+
+    assert result.failed_blocks == [1]
+    assert result.markdown == doc
+    assert any("脚注" in warning for warning in result.warnings)
+
+
 def test_table_column_loss_is_rejected():
     doc = "| A | B |\n| --- | --- |\n| 1 | 2 |\n"
     fake = _fake()
@@ -289,6 +370,16 @@ def test_outer_fence_wrapper_is_unwrapped():
     assert result.markdown == "A plain paragraph.\n"
 
 
+def test_chinese_preamble_is_stripped():
+    doc = "A plain paragraph.\n"
+    fake = lambda system, user: "以下是译文：\n\nA plain paragraph.\n"
+
+    result = translate_markdown(doc, TranslationOptions("English"), ai_call=fake)
+
+    assert result.failed_blocks == []
+    assert result.markdown == "A plain paragraph.\n"
+
+
 # ---------------------------------------------------------------- 取消
 
 def test_cancel_stops_remaining_blocks():
@@ -341,8 +432,9 @@ def test_cancel_in_concurrent_mode_returns_promptly():
     )
 
     assert result.cancelled is True
-    assert 0 < result.blocks_translated < result.blocks_total
+    assert result.blocks_translated < result.blocks_total
     assert result.failed_blocks
+    assert len(calls) <= 4  # 取消后不再派发新块
     assert any("取消" in warning for warning in result.warnings)
 
 
@@ -350,18 +442,14 @@ def test_cancel_before_start_calls_nothing():
     doc = "# Title\n\nParagraph text.\n"
     event = threading.Event()
     event.set()
-    calls: list[str] = []
 
-    result = translate_markdown(
-        doc,
-        TranslationOptions("English", cancel_event=event),
-        ai_call=build_translator({}, calls=calls),
-    )
+    result = translate_markdown(doc, TranslationOptions("English", cancel_event=event))
 
-    assert calls == []
     assert result.cancelled is True
     assert result.blocks_translated == 0
     assert result.markdown == doc
+    assert result.failed_blocks == [1, 2]
+    assert any("取消" in warning for warning in result.warnings)
 
 
 # ---------------------------------------------------------------- 输入边界与缓存

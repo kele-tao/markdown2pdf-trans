@@ -1,6 +1,8 @@
-"""
-全局配置：从环境变量加载 AI 服务参数、限流参数、路径参数。
-优先级：显式环境变量 > .env 文件 > 内置默认值（仅对非敏感项）。
+"""集中配置。
+
+原则：
+- 所有路径 / 限制 / 语言 / 主题集中在这里，其他模块只导入不硬编码。
+- AI 密钥等可变配置在 `src.core.settings_store`（可运行时改），此处只保留静态项。
 """
 from __future__ import annotations
 
@@ -8,216 +10,262 @@ import os
 from pathlib import Path
 from typing import Any
 
-# 尝试加载 .env（可选依赖）
-try:
-    from dotenv import load_dotenv
-
-    # 优先加载项目根目录的 .env，再加载 CWD 的
-    for candidate in (Path(__file__).resolve().parent.parent / ".env", Path.cwd() / ".env"):
-        if candidate.is_file():
-            load_dotenv(candidate, override=False)
-except ImportError:  # 没装 python-dotenv 也照常工作
-    pass
-
-
 # -----------------------------------------------------------------------------
 # 路径
 # -----------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_DIR = Path(os.environ.get("M2P_OUTPUT_DIR", BASE_DIR / "output")).resolve()
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
+DATA_DIR = Path(os.environ.get("M2P_DATA_DIR", BASE_DIR / "data")).resolve()
+OUTPUT_DIR = Path(os.environ.get("M2P_OUTPUT_DIR", DATA_DIR / "output")).resolve()
 TEMPLATE_DIR = BASE_DIR / "src" / "templates"
 STATIC_DIR = BASE_DIR / "src" / "static"
+FONT_DIR = Path(os.environ.get("M2P_FONT_DIR", BASE_DIR / "fonts")).resolve()
 
+for _p in (DATA_DIR, OUTPUT_DIR):
+    _p.mkdir(parents=True, exist_ok=True)
+
+APP_VERSION = "4.0.0"
+
+# -----------------------------------------------------------------------------
+# 限制
+# -----------------------------------------------------------------------------
 MAX_UPLOAD_BYTES = int(os.environ.get("M2P_MAX_UPLOAD_MB", "100")) * 1024 * 1024
-
-
-# -----------------------------------------------------------------------------
-# AI 服务
-# -----------------------------------------------------------------------------
-def _require_env(key: str) -> str:
-    val = os.environ.get(key, "").strip()
-    if not val:
-        raise RuntimeError(
-            f"环境变量 {key} 未配置。请在 .env 中设置后重启服务。\n"
-            f"参考：cp .env.example .env  # 然后填入你的 AI_API_KEY 等"
-        )
-    return val
-
-
-class AIConfig:
-    """AI 服务配置（单例）。任何调用都走这里，便于测试时 monkeypatch。"""
-
-    def __init__(self) -> None:
-        # 启动时不强校验，懒加载。给前端一个机会展示"未配置"状态而不是直接 500。
-        self.api_url: str = os.environ.get("AI_API_URL", "").strip()
-        self.api_key: str = os.environ.get("AI_API_KEY", "").strip()
-        self.model: str = os.environ.get("AI_MODEL", "").strip()
-        self.timeout: int = int(os.environ.get("AI_TIMEOUT", "180"))
-        self.max_retries: int = int(os.environ.get("AI_MAX_RETRIES", "3"))
-        self.retry_base_delay: float = float(os.environ.get("AI_RETRY_BASE_DELAY", "1.5"))
-        self.max_concurrency: int = int(os.environ.get("AI_MAX_CONCURRENCY", "3"))
-
-    def is_configured(self) -> bool:
-        # 每次实时读 env，方便测试和热切换
-        url = os.environ.get("AI_API_URL", "").strip() or self.api_url
-        key = os.environ.get("AI_API_KEY", "").strip() or self.api_key
-        model = os.environ.get("AI_MODEL", "").strip() or self.model
-        return bool(url and key and model)
-
-    def require(self) -> None:
-        """真实调用前必须通过；缺失则抛清晰异常。"""
-        missing = [
-            name for name, val in (
-                ("AI_API_URL", os.environ.get("AI_API_URL", "").strip() or self.api_url),
-                ("AI_API_KEY", os.environ.get("AI_API_KEY", "").strip() or self.api_key),
-                ("AI_MODEL", os.environ.get("AI_MODEL", "").strip() or self.model),
-            ) if not val
-        ]
-        if missing:
-            raise RuntimeError(
-                "AI 服务未配置。缺失环境变量: " + ", ".join(missing)
-                + "。复制 .env.example 为 .env 并填入即可。"
-            )
-
-
-ai_config = AIConfig()
-
-
-# -----------------------------------------------------------------------------
-# 翻译缓存 / 任务 生命周期
-# -----------------------------------------------------------------------------
+MAX_UPLOAD_MB = MAX_UPLOAD_BYTES // 1024 // 1024
+MAX_IMAGE_BYTES = int(os.environ.get("M2P_MAX_IMAGE_BYTES", str(5 * 1024 * 1024)))
+TASK_TTL_SECONDS = int(os.environ.get("M2P_TASK_TTL_SECONDS", str(24 * 3600)))
+TASK_CLEANUP_INTERVAL = int(os.environ.get("M2P_TASK_CLEANUP_INTERVAL", "1800"))
 CACHE_MAX_ENTRIES = int(os.environ.get("M2P_CACHE_MAX_ENTRIES", "2000"))
-CACHE_TTL_SECONDS = int(os.environ.get("M2P_CACHE_TTL_SECONDS", str(7 * 24 * 3600)))  # 7 天
-TASK_TTL_SECONDS = int(os.environ.get("M2P_TASK_TTL_SECONDS", str(24 * 3600)))  # 1 天
-TASK_CLEANUP_INTERVAL = int(os.environ.get("M2P_TASK_CLEANUP_INTERVAL", "1800"))  # 30 分钟
+CACHE_TTL_SECONDS = int(os.environ.get("M2P_CACHE_TTL_SECONDS", str(7 * 24 * 3600)))
+MAX_CHARS_PER_CHUNK = int(os.environ.get("M2P_MAX_CHARS_PER_CHUNK", "6000"))
+
+# -----------------------------------------------------------------------------
+# 语言（新增语言只需在此追加；rtl 决定排版方向）
+# -----------------------------------------------------------------------------
+LANGUAGE_SPECS: list[dict[str, Any]] = [
+    {"code": "English", "label": "英语 (English)", "native": "English", "rtl": False},
+    {"code": "Chinese", "label": "中文 (Chinese)", "native": "中文", "rtl": False},
+    {"code": "French", "label": "法语 (Français)", "native": "Français", "rtl": False},
+    {"code": "Russian", "label": "俄语 (Русский)", "native": "Русский", "rtl": False},
+    {"code": "Spanish", "label": "西班牙语 (Español)", "native": "Español", "rtl": False},
+    {"code": "Arabic", "label": "阿拉伯语 (العربية)", "native": "العربية", "rtl": True},
+]
+
+LANGUAGES: list[tuple[str, str]] = [(item["code"], item["label"]) for item in LANGUAGE_SPECS]
+_RTL_LANGUAGES = {item["code"].casefold() for item in LANGUAGE_SPECS if item["rtl"]}
+
+
+def is_rtl_language(language: str) -> bool:
+    return (language or "").strip().casefold() in _RTL_LANGUAGES
+
+
+def language_spec(language: str) -> dict[str, Any]:
+    for item in LANGUAGE_SPECS:
+        if item["code"].casefold() == (language or "").strip().casefold():
+            return item
+    return {"code": language or "English", "label": language or "English", "native": language or "", "rtl": False}
 
 
 # -----------------------------------------------------------------------------
-# PDF 样式预设（UI 主题用）
+# 导出模式
+# -----------------------------------------------------------------------------
+EXPORT_MODES: list[tuple[str, str]] = [
+    ("translated", "仅译文（文件名同时翻译）"),
+    ("original", "仅原文"),
+    ("bilingual", "双语对照 + 单独译文"),
+]
+
+EXPORT_MODE_LABELS = dict(EXPORT_MODES)
+
+BILINGUAL_LAYOUTS: list[tuple[str, str]] = [
+    ("side_by_side", "并排对照（左右）"),
+    ("stacked", "上下对照（原文在上）"),
+]
+
+TONE_OPTIONS: list[tuple[str, str]] = [
+    ("professional", "专业（技术/商务）"),
+    ("academic", "学术"),
+    ("casual", "口语自然"),
+]
+
+PAGE_SIZES: list[str] = ["A4", "A5", "Letter", "Legal"]
+
+# -----------------------------------------------------------------------------
+# 字体策略：字体族链按「先本地内嵌字体、后系统回退」排列。
+# 中文/阿拉伯语必须显式给出回退，避免 WeasyPrint 缺字显示方框。
+# -----------------------------------------------------------------------------
+FONT_STACKS: dict[str, dict[str, str]] = {
+    "serif": {
+        "family": '"M2P Serif", "Noto Serif", "Noto Serif SC", "Times New Roman", "Songti SC", "SimSun", "Noto Naskh Arabic", "Tahoma", serif',
+        "label": "衬线（书籍/学术）",
+    },
+    "sans": {
+        "family": '"M2P Sans", "Noto Sans", "Noto Sans SC", "Segoe UI", "Arial", "Microsoft YaHei", "Noto Naskh Arabic", "Tahoma", sans-serif',
+        "label": "无衬线（文档/商务）",
+    },
+    "mono": {
+        "family": '"JetBrains Mono", "Cascadia Code", "Consolas", "DejaVu Sans Mono", monospace',
+        "label": "等宽（技术文档）",
+    },
+}
+
+# WeasyPrint 渲染时注册的本地字体文件（存在才注册，缺失自动跳过）
+FONT_FILES: list[str] = [
+    "NotoSerifSC-VF.ttf",
+    "NotoSansSC-VF.ttf",
+    "NotoSansArabic-Regular.ttf",
+    "NotoNaskhArabic-Regular.ttf",
+]
+
+# -----------------------------------------------------------------------------
+# 版式主题（4 套成品 + 用户可覆盖各项）
 # -----------------------------------------------------------------------------
 THEME_PRESETS: dict[str, dict[str, Any]] = {
     "default": {
         "name": "默认",
-        "text_color": "#333333",
-        "heading_color": "#000000",
-        "link_color": "#0d6efd",
-        "quote_bg_color": "#f9f9f9",
-        "quote_border_color": "#cccccc",
-        "font_family": '"Times New Roman", "Microsoft YaHei", serif',
-        "font_size": "12pt",
-        "line_height": "1.7",
+        "description": "通用技术文档：清晰的字号阶梯与克制的留白",
+        "text_color": "#1f2328",
+        "muted_color": "#5c6570",
+        "heading_color": "#111418",
+        "link_color": "#1f5fbf",
+        "accent_color": "#1f5fbf",
+        "quote_bg_color": "#f5f7fa",
+        "quote_border_color": "#c9d3e0",
+        "table_header_bg": "#eef2f7",
+        "table_border_color": "#d5dce5",
+        "code_bg": "#f6f8fa",
+        "rule_color": "#dfe4ea",
+        "font_stack": "serif",
+        "font_family": '"M2P Serif", "Noto Serif", "Times New Roman", "Songti SC", "SimSun", "Noto Naskh Arabic", "Tahoma", serif',
+        "font_size": "11pt",
+        "line_height": "1.75",
         "text_align": "justify",
         "heading_weight": "700",
-        "page_margin": "2.5cm",
+        "page_size": "A4",
         "page_orientation": "portrait",
-        "code_theme": "kate",
-        "code_font_size": "85%",
+        "page_margin": "2.2cm 2cm",
+        "code_font_size": "0.86em",
+        "cover_style": "plain",
+        "header_rule": "true",
     },
     "academic": {
         "name": "学术",
-        "text_color": "#1a1a1a",
-        "heading_color": "#0a0a0a",
+        "description": "论文/研究报告：衬线正文、编号标题、素雅页眉",
+        "text_color": "#17181a",
+        "muted_color": "#5a5f66",
+        "heading_color": "#0d0f12",
         "link_color": "#0b5394",
-        "quote_bg_color": "#f0f4f8",
-        "quote_border_color": "#5b9bd5",
-        "font_family": '"Times New Roman", "Source Han Serif SC", serif',
-        "font_size": "11pt",
-        "line_height": "1.6",
+        "accent_color": "#0b5394",
+        "quote_bg_color": "#f2f5f9",
+        "quote_border_color": "#8aa8c6",
+        "table_header_bg": "#e9eef4",
+        "table_border_color": "#c6d1dd",
+        "code_bg": "#f4f6f8",
+        "rule_color": "#cfd6de",
+        "font_stack": "serif",
+        "font_family": '"M2P Serif", "Noto Serif", "Times New Roman", "Songti SC", "SimSun", "Noto Naskh Arabic", "Tahoma", serif',
+        "font_size": "10.5pt",
+        "line_height": "1.8",
         "text_align": "justify",
         "heading_weight": "700",
-        "page_margin": "2cm",
+        "page_size": "A4",
         "page_orientation": "portrait",
-        "code_theme": "tango",
-        "code_font_size": "85%",
+        "page_margin": "2.4cm 2.2cm",
+        "code_font_size": "0.82em",
+        "cover_style": "rule",
+        "header_rule": "true",
     },
     "business": {
         "name": "商务",
-        "text_color": "#212529",
-        "heading_color": "#0d6efd",
-        "link_color": "#0d6efd",
-        "quote_bg_color": "#e7f1ff",
-        "quote_border_color": "#0d6efd",
-        "font_family": '"Helvetica", "Arial", "Microsoft YaHei", sans-serif',
-        "font_size": "11pt",
-        "line_height": "1.5",
+        "description": "对外交付：无衬线正文、品牌色标题、紧凑表格",
+        "text_color": "#1a1d21",
+        "muted_color": "#5d646d",
+        "heading_color": "#0f3d6b",
+        "link_color": "#0f62b5",
+        "accent_color": "#0f62b5",
+        "quote_bg_color": "#eef4fb",
+        "quote_border_color": "#0f62b5",
+        "table_header_bg": "#0f3d6b",
+        "table_header_color": "#ffffff",
+        "table_border_color": "#c8d3e0",
+        "code_bg": "#f5f7f9",
+        "rule_color": "#d8dee6",
+        "font_stack": "sans",
+        "font_family": '"M2P Sans", "Noto Sans", "Segoe UI", "Arial", "Microsoft YaHei", "Noto Naskh Arabic", "Tahoma", sans-serif',
+        "font_size": "10.5pt",
+        "line_height": "1.65",
         "text_align": "left",
-        "heading_weight": "700",
-        "page_margin": "2cm",
+        "heading_weight": "650",
+        "page_size": "A4",
         "page_orientation": "portrait",
-        "code_theme": "pygments",
-        "code_font_size": "85%",
+        "page_margin": "2cm 1.8cm",
+        "code_font_size": "0.85em",
+        "cover_style": "band",
+        "header_rule": "true",
     },
-    "dark": {
-        "name": "暗黑",
-        "text_color": "#e6e6e6",
-        "heading_color": "#ffffff",
-        "link_color": "#66b2ff",
-        "quote_bg_color": "#2a2a2a",
-        "quote_border_color": "#555555",
-        "font_family": '"Helvetica", "Arial", "Microsoft YaHei", sans-serif',
+    "modern": {
+        "name": "现代",
+        "description": "产品手册：大留白、强对比标题、圆角引用与代码块",
+        "text_color": "#20242a",
+        "muted_color": "#616a75",
+        "heading_color": "#0b0d10",
+        "link_color": "#0f766e",
+        "accent_color": "#0f766e",
+        "quote_bg_color": "#f0f7f6",
+        "quote_border_color": "#0f766e",
+        "table_header_bg": "#eef2f4",
+        "table_border_color": "#ccd5da",
+        "code_bg": "#f4f6f8",
+        "rule_color": "#dde3e8",
+        "font_stack": "sans",
+        "font_family": '"M2P Sans", "Noto Sans", "Segoe UI", "Arial", "Microsoft YaHei", "Noto Naskh Arabic", "Tahoma", sans-serif',
         "font_size": "11pt",
-        "line_height": "1.6",
+        "line_height": "1.8",
         "text_align": "left",
         "heading_weight": "700",
-        "page_margin": "2cm",
+        "page_size": "A4",
         "page_orientation": "portrait",
-        "code_theme": "monokai",
-        "code_font_size": "90%",
+        "page_margin": "2.6cm 2.4cm",
+        "code_font_size": "0.86em",
+        "cover_style": "minimal",
+        "header_rule": "false",
     },
 }
 
+DEFAULT_THEME = "default"
 
-# -----------------------------------------------------------------------------
-# 翻译 Prompt
-# -----------------------------------------------------------------------------
-TRANSLATION_PROMPT = """
-You are a professional linguist and expert document translator. Your task is to translate the following Markdown text into {target_language}.
+# 前端可调样式项（白名单：只接受这些键，值统一转字符串后进 CSS）
+STYLE_WHITELIST = (
+    "font_family",
+    "font_size",
+    "line_height",
+    "text_align",
+    "page_size",
+    "page_orientation",
+    "page_margin",
+    "text_color",
+    "heading_color",
+    "link_color",
+    "accent_color",
+    "code_font_size",
+    "theme",
+)
 
-**Critical Instructions:**
-1.  **Preserve Formatting:** You MUST preserve all original Markdown formatting perfectly. This includes, but is not limited to:
-    * Headings (`#`, `##`, etc.)
-    * Lists (ordered, unordered, and nested)
-    * Bold (`**text**`) and Italic (`*text*`) styling
-    * Blockquotes (`>`)
-    * Tables (`| Header | ...`)
-    * Image links (`![alt text](url)`)
-    * Hyperlinks (`[link text](url)`)
-2.  **Code Blocks:** DO NOT translate any content inside code blocks (```...```) or inline code (`...`). Leave the code as it is.
-3.  **Accuracy and Tone:** Translate the textual content with high accuracy, maintaining the original tone and context. The translation should be grammatically flawless and natural-sounding in {target_language}.
-4.  **Output ONLY Translation:** Your output must ONLY be the translated Markdown text. Do not add any extra explanations, apologies, or comments like "Here is the translation:".
-5.  **Respectful Language:** Ensure the translation is professional and respectful, completely free of any insulting or offensive language.
-
-Translate the following Markdown content:
-"""
-
-FILENAME_TRANSLATION_PROMPT = """
-You are an expert file name translator. Translate the following text to {target_language} to be used as a valid file name.
-**Critical Instructions:**
-1.  Provide a concise and accurate translation.
-2.  Replace spaces with underscores (_).
-3.  Do not include any special characters that are invalid for file names (e.g., /\\:*?"<>|).
-4.  Output ONLY the translated text. Do not add any explanation.
-
-Translate the following text:
-"""
+DOCUMENT_DEFAULTS: dict[str, Any] = {
+    "cover": True,
+    "toc": True,
+    "header": True,
+    "footer": True,
+    "page_number": True,
+    "title": "",
+    "subtitle": "",
+    "author": "",
+    "date": "",
+}
 
 
-# -----------------------------------------------------------------------------
-# 语言选项
-# -----------------------------------------------------------------------------
-LANGUAGES: list[tuple[str, str]] = [
-    ("English", "英语 (English)"),
-    ("Chinese", "中文 (Chinese)"),
-    ("French", "法语 (French)"),
-    ("Russian", "俄语 (Russian)"),
-    ("Spanish", "西班牙语 (Spanish)"),
-    ("Arabic", "阿拉伯语 (Arabic)"),
-]
-
-EXPORT_MODES: list[tuple[str, str]] = [
-    ("translated", "仅译文 (文件名将翻译)"),
-    ("original", "仅原文"),
-    ("bilingual", "双语对照 + 单独译文"),
-]
+def resolve_theme(name: str | None) -> dict[str, Any]:
+    """取主题预设（未知主题回退默认），返回副本。"""
+    key = (name or "").strip().lower()
+    preset = THEME_PRESETS.get(key) or THEME_PRESETS[DEFAULT_THEME]
+    merged = dict(preset)
+    merged["key"] = key if key in THEME_PRESETS else DEFAULT_THEME
+    return merged

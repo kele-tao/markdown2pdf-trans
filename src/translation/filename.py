@@ -7,8 +7,6 @@ from __future__ import annotations
 import re
 from typing import Callable
 
-PROMPT_VERSION = "filename-v3.1"
-
 INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 _META_PREFIX = re.compile(
     r"^(?:here is|here's|translation|translated filename|以下是|译文|翻译结果)[^:：]{0,40}[:：]\s*",
@@ -52,6 +50,8 @@ def translate_filename(
 
     translated = _clean_model_name(raw)
     translated = _strip_extension(translated, extension)
+    if extension:
+        translated = _strip_foreign_extension(translated)
     cleaned = _sanitize(translated)
     if not cleaned:
         return original
@@ -96,6 +96,11 @@ def _strip_extension(value: str, extension: str) -> str:
     if extension and value.casefold().endswith(extension.casefold()):
         return value[: -len(extension)]
     return value
+
+
+def _strip_foreign_extension(value: str) -> str:
+    """原文有扩展名时，去掉模型额外带上的其他字母扩展名。"""
+    return re.sub(r"\.[A-Za-z]{1,8}$", "", value)
 
 
 def _sanitize(value: str) -> str:

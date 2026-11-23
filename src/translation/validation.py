@@ -20,7 +20,7 @@ _INLINE_CODE_RE = re.compile(r"(?<!`)`+([^`\n]+?)`+(?!`)")
 _IMAGE_RE = re.compile(r"!\[[^\]]*\]\(\s*([^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\s*\)")
 _LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(\s*([^)\s]+)(?:\s+[\"'][^\"']*[\"'])?\s*\)")
 _AUTOLINK_RE = re.compile(r"<((?:https?|mailto):[^>\s]+)>")
-_REF_DEF_RE = re.compile(r"^ {0,3}\[[^\]]+\]:\s*(\S+)", re.MULTILINE)
+_REF_DEF_RE = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*(\S+)", re.MULTILINE)
 _BLOCK_MATH_RE = re.compile(r"\$\$([\s\S]+?)\$\$")
 _INLINE_MATH_RE = re.compile(r"(?<!\$)\$(?!\$)([^\n$]+?)\$(?!\$)")
 _PLACEHOLDER_PATTERNS = (
@@ -29,6 +29,7 @@ _PLACEHOLDER_PATTERNS = (
     re.compile(r"%[sdifr]"),
     re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}"),
 )
+_FOOTNOTE_RE = re.compile(r"\[\^[^\]\s]+\]")
 _LIST_ITEM_RE = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])[ \t]+", re.MULTILINE)
 
 _EXPECTED_SINGLE_KIND = {
@@ -79,6 +80,7 @@ def validate_translation(
     issues.extend(_check_links(original_text, text))
     issues.extend(_check_math(original_text, text))
     issues.extend(_check_placeholders(original_text, text))
+    issues.extend(_check_footnotes(original_text, text))
 
     return _dedupe(issues)
 
@@ -173,14 +175,29 @@ def _check_placeholders(original: str, translated: str) -> list[str]:
     return ["占位符数量或被改动"]
 
 
+def _check_footnotes(original: str, translated: str) -> list[str]:
+    expected = sorted(_FOOTNOTE_RE.findall(original))
+    if not expected:
+        return []
+    actual = sorted(_FOOTNOTE_RE.findall(translated))
+    if expected == actual:
+        return []
+    missing = _difference(expected, actual)
+    if missing:
+        return [f"脚注标记被改动或丢失（如 {missing[0]}）"]
+    return ["脚注标记数量或被改动"]
+
+
 def _check_table_shape(original_table: str, translated_table: str) -> list[str]:
-    expected_columns, expected_rows = _table_shape(original_table)
-    actual_columns, actual_rows = _table_shape(translated_table)
+    expected_columns, expected_rows, expected_widths = _table_shape(original_table)
+    actual_columns, actual_rows, actual_widths = _table_shape(translated_table)
     issues: list[str] = []
     if expected_columns != actual_columns:
         issues.append(f"表格列数不一致（原文 {expected_columns}，译文 {actual_columns}）")
     if expected_rows != actual_rows:
         issues.append(f"表格行数不一致（原文 {expected_rows}，译文 {actual_rows}）")
+    if expected_widths != actual_widths:
+        issues.append("表格行列结构不一致（存在缺列或并列的行）")
     return issues
 
 
@@ -192,17 +209,21 @@ def _check_list_items(original_list: str, translated_list: str) -> list[str]:
     return []
 
 
-def _table_shape(table_text: str) -> tuple[int, int]:
+def _table_shape(table_text: str) -> tuple[int, int, list[int]]:
     rows = [line.strip() for line in table_text.split("\n") if line.strip()]
     if not rows:
-        return (0, 0)
-    header = rows[0].strip()
-    if header.startswith("|"):
-        header = header[1:]
-    if header.endswith("|"):
-        header = header[:-1]
-    columns = len([cell for cell in header.split("|")])
-    return (columns, len(rows))
+        return (0, 0, [])
+    widths = [_table_cell_count(row) for row in rows]
+    return (widths[0], len(rows), widths)
+
+
+def _table_cell_count(row: str) -> int:
+    value = row.strip()
+    if value.startswith("|"):
+        value = value[1:]
+    if value.endswith("|"):
+        value = value[:-1]
+    return len(value.split("|"))
 
 
 def _placeholders(text: str) -> list[str]:

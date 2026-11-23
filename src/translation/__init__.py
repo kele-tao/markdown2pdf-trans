@@ -10,6 +10,7 @@ from .cache import clear_translation_cache
 from .engine import translate_markdown
 from .filename import translate_filename
 from .glossary import suggest_glossary
+from .integration import make_legacy_ai_call
 from .models import GlossaryEntry, TranslationOptions, TranslationResult
 from .prompts import PROMPT_VERSION
 
@@ -20,6 +21,7 @@ __all__ = [
     "translate_markdown",
     "suggest_glossary",
     "translate_filename",
+    "make_legacy_ai_call",
     "clear_translation_cache",
     "PROMPT_VERSION",
 ]

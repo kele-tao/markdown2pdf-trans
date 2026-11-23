@@ -1,0 +1,207 @@
+/* ==========================================================================
+   设计令牌与基础样式（离线自字体栈，无任何 CDN 依赖）
+   ========================================================================== */
+:root {
+  /* 品牌：克制的深海蓝，避免廉价渐变 */
+  --brand: #1f5fbf;
+  --brand-strong: #17499a;
+  --brand-soft: #eaf1fb;
+  --brand-soft-strong: #d6e4f8;
+
+  --bg: #f5f6f8;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f7f8fa;
+  --surface-sunken: #eef0f4;
+  --border: #e3e6eb;
+  --border-strong: #cfd5dd;
+
+  --text: #15181d;
+  --text-secondary: #4a5260;
+  --text-muted: #6d7684;
+  --text-inverse: #ffffff;
+
+  --success: #1a7f4b;
+  --success-soft: #e7f5ec;
+  --warning: #9a6700;
+  --warning-soft: #fdf6e3;
+  --danger: #b42318;
+  --danger-soft: #fdeceb;
+  --info: #175cd3;
+  --info-soft: #eaf2fe;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow-xs: 0 1px 1px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 10px rgba(16, 24, 40, 0.07), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 16px 40px rgba(16, 24, 40, 0.14);
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Georgia, "Songti SC", "SimSun", serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --header-h: 60px;
+  --control-h: 36px;
+  --transition: 140ms cubic-bezier(0.2, 0, 0, 1);
+  --focus-ring: 0 0 0 3px rgba(31, 95, 191, 0.24);
+}
+
+[data-theme="dark"] {
+  --brand: #6ea8fe;
+  --brand-strong: #8dbcff;
+  --brand-soft: #16243a;
+  --brand-soft-strong: #1d3252;
+
+  --bg: #0e1014;
+  --bg-elevated: #14171d;
+  --surface: #161a21;
+  --surface-muted: #1a1f27;
+  --surface-sunken: #10141a;
+  --border: #262c36;
+  --border-strong: #364050;
+
+  --text: #e9ebef;
+  --text-secondary: #b6bdc8;
+  --text-muted: #8b93a1;
+  --text-inverse: #0e1014;
+
+  --success: #5fd39a;
+  --success-soft: #122a20;
+  --warning: #e8c468;
+  --warning-soft: #2a2416;
+  --danger: #ff8d85;
+  --danger-soft: #2c1a19;
+  --info: #82b1ff;
+  --info-soft: #16243a;
+
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
+  --focus-ring: 0 0 0 3px rgba(110, 168, 254, 0.32);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: var(--text-base);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 620;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+p { margin: 0; }
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; }
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--brand-soft-strong);
+  color: var(--text);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  stroke-width: 1.7;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-sm { width: 15px; height: 15px; }
+.icon-lg { width: 22px; height: 22px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

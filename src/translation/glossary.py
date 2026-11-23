@@ -128,9 +128,9 @@ def normalize_entries(entries: list[GlossaryEntry] | None) -> list[GlossaryEntry
     result: list[GlossaryEntry] = []
     seen: set[str] = set()
     for entry in entries or []:
-        source = (entry.source or "").strip()
-        target = (entry.target or "").strip()
-        if not source or not target:
+        source = re.sub(r"\s+", " ", (entry.source or "")).strip()
+        target = re.sub(r"\s+", " ", (entry.target or "")).strip()
+        if not source or not target or len(source) > 200 or len(target) > 200:
             continue
         key = source.casefold()
         if key in seen:

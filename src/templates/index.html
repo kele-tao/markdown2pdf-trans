@@ -1,964 +1,482 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-bs-theme="light">
+<html lang="zh-CN" data-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 文档翻译中心</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
-    <style>
-        :root {
-            --brand-1: #6366f1;
-            --brand-2: #8b5cf6;
-            --brand-3: #ec4899;
-            --brand-grad: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 50%, var(--brand-3) 100%);
-            --brand-grad-soft: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(236,72,153,0.08) 100%);
-            --surface: #ffffff;
-            --surface-2: #f8fafc;
-            --surface-3: #f1f5f9;
-            --border: #e5e7eb;
-            --text: #1f2937;
-            --text-muted: #6b7280;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
-            --shadow-lg: 0 10px 40px rgba(99,102,241,0.12);
-        }
-        [data-bs-theme="dark"] {
-            --brand-1: #818cf8;
-            --brand-2: #a78bfa;
-            --brand-3: #f472b6;
-            --brand-grad-soft: linear-gradient(135deg, rgba(129,140,248,0.10) 0%, rgba(244,114,182,0.10) 100%);
-            --surface: #1e1e2e;
-            --surface-2: #181825;
-            --surface-3: #11111b;
-            --border: #313244;
-            --text: #e6e6e6;
-            --text-muted: #a6a6a6;
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
-            --shadow-lg: 0 10px 40px rgba(129,140,248,0.15);
-        }
-        * { box-sizing: border-box; }
-        body {
-            background: var(--surface-2);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-            min-height: 100vh;
-            margin: 0;
-        }
-        /* 顶部装饰条 */
-        body::before {
-            content: "";
-            display: block;
-            height: 3px;
-            background: var(--brand-grad);
-        }
-        /* Navbar */
-        .navbar-brand-wrap {
-            display: flex; align-items: center; gap: 0.6rem;
-            font-weight: 800; font-size: 1.2rem;
-        }
-        .brand-logo {
-            width: 32px; height: 32px;
-            border-radius: 8px;
-            box-shadow: var(--shadow-md);
-        }
-        .brand-name {
-            background: var(--brand-grad);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .navbar {
-            background: var(--surface) !important;
-            border-bottom: 1px solid var(--border);
-            padding: 0.75rem 0;
-        }
-        /* Card */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            box-shadow: var(--shadow-sm);
-            transition: box-shadow 0.2s;
-        }
-        .card-elevated { box-shadow: var(--shadow-md); }
-        /* 状态徽章 */
-        .status-pill {
-            display: inline-flex; align-items: center; gap: 0.4rem;
-            padding: 0.3rem 0.7rem; border-radius: 999px;
-            font-size: 0.82rem; font-weight: 500;
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-        }
-        .status-pill .dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-        .status-ok { color: var(--success); }
-        .status-warn { color: var(--warning); }
-        .status-err { color: var(--danger); }
-        /* Icon button */
-        .icon-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text);
-            border-radius: 8px;
-            padding: 0.35rem 0.6rem;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        .icon-btn:hover { border-color: var(--brand-1); color: var(--brand-1); }
-        /* Form section */
-        .form-section {
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 0.9rem 1rem;
-            margin-bottom: 0.8rem;
-        }
-        .form-section legend {
-            float: none; width: auto; padding: 0 0.5rem;
-            font-size: 0.92rem; font-weight: 600;
-            color: var(--brand-1);
-            display: inline-flex; align-items: center; gap: 0.4rem;
-        }
-        .form-section > div, .form-section > .row { clear: both; }
-        .form-label { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.2rem; }
-        .form-control, .form-select {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--brand-1);
-            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
-        }
-        /* 主题预设 */
-        .theme-chip {
-            display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
-            padding: 0.7rem 0.4rem;
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            background: var(--surface);
-            cursor: pointer;
-            transition: all 0.15s;
-            text-align: center;
-        }
-        .theme-chip:hover { transform: translateY(-2px); border-color: var(--brand-1); }
-        .theme-chip.active {
-            border-color: var(--brand-1);
-            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
-            background: var(--brand-grad-soft);
-        }
-        .theme-preview {
-            width: 100%; height: 36px; border-radius: 6px;
-            display: flex; overflow: hidden;
-            border: 1px solid var(--border);
-        }
-        .theme-preview > div { flex: 1; }
-        .theme-name { font-size: 0.78rem; font-weight: 600; }
-        /* 上传区 */
-        .upload-zone {
-            display: block;
-            border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 1.5rem 1rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: var(--surface-2);
-        }
-        .upload-zone:hover, .upload-zone.dragover {
-            border-color: var(--brand-1);
-            background: var(--brand-grad-soft);
-        }
-        .upload-zone.dragover .upload-icon { transform: translateY(-3px) scale(1.1); }
-        .upload-icon {
-            font-size: 2.2rem;
-            background: var(--brand-grad);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            transition: transform 0.2s;
-        }
-        /* 上传类型按钮组 */
-        .upload-types {
-            display: flex; gap: 0.4rem; margin-bottom: 0.8rem;
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 0.3rem;
-        }
-        .upload-types .btn-check:checked + .btn {
-            background: var(--brand-grad);
-            color: white;
-            border: none;
-        }
-        .upload-types .btn {
-            flex: 1;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.88rem;
-            padding: 0.4rem;
-            border-radius: 7px;
-        }
-        /* 导出模式卡片 */
-        .mode-card {
-            display: block; padding: 0.8rem; border: 2px solid var(--border);
-            border-radius: 10px; cursor: pointer; transition: all 0.15s;
-            background: var(--surface);
-        }
-        .mode-radio { display: none; }
-        .mode-radio:checked + .mode-card {
-            border-color: var(--brand-1);
-            background: var(--brand-grad-soft);
-            box-shadow: 0 0 0 3px rgba(99,102,241,0.10);
-        }
-        .mode-title { font-weight: 600; margin-bottom: 0.2rem; }
-        .mode-desc { font-size: 0.78rem; color: var(--text-muted); }
-        /* 主操作按钮 */
-        .btn-brand {
-            background: var(--brand-grad);
-            border: none;
-            color: white;
-            font-weight: 600;
-            padding: 0.7rem 1.4rem;
-            border-radius: 10px;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(99,102,241,0.25);
-        }
-        .btn-brand:hover:not(:disabled) {
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 18px rgba(99,102,241,0.35);
-        }
-        .btn-brand:disabled {
-            background: var(--surface-3);
-            color: var(--text-muted);
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-        /* 预览 */
-        .preview-frame {
-            height: 75vh;
-            min-height: 500px;
-            border: 1px solid var(--border);
-            border-top: none;
-            border-radius: 0 0 10px 10px;
-            background: var(--surface-2);
-            width: 100%;
-        }
-        .preview-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0.5rem 0.8rem;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-bottom: none;
-            border-radius: 10px 10px 0 0;
-            font-weight: 600; font-size: 0.9rem;
-        }
-        .preview-header .badge { font-weight: 500; }
-        /* 进度区 */
-        .progress-card { background: var(--surface); }
-        .progress { height: 1.4rem; background: var(--surface-3); }
-        .progress-bar { background: var(--brand-grad); }
-        /* 日志 */
-        .log-container {
-            background: #0f0f17;
-            color: #d4d4d4;
-            font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
-            max-height: 280px; overflow-y: auto;
-            border-radius: 8px; padding: 0.7rem;
-        }
-        .log-container pre {
-            white-space: pre-wrap; word-break: break-word;
-            margin: 0; font-size: 0.78rem; line-height: 1.5;
-            color: #94a3b8;
-        }
-        .log-container pre.fail { color: #f87171; }
-        .log-container pre.warn { color: #fbbf24; }
-        .log-container pre.success { color: #34d399; }
-        /* details */
-        details > summary { list-style: none; cursor: pointer; }
-        details > summary::-webkit-details-marker { display: none; }
-        details > summary::after { content: "▾"; float: right; transition: transform 0.2s; margin-left: 0.5rem; }
-        details[open] > summary::after { transform: rotate(180deg); }
-        /* Toast */
-        .toast-stack {
-            position: fixed; top: 1rem; right: 1rem; z-index: 9999;
-            display: flex; flex-direction: column; gap: 0.5rem;
-            max-width: 360px;
-        }
-        .toast-item {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-left: 4px solid var(--brand-1);
-            border-radius: 8px;
-            padding: 0.7rem 0.9rem;
-            box-shadow: var(--shadow-md);
-            animation: slideIn 0.3s ease-out;
-        }
-        .toast-item.success { border-left-color: var(--success); }
-        .toast-item.warning { border-left-color: var(--warning); }
-        .toast-item.danger { border-left-color: var(--danger); }
-        @keyframes slideIn {
-            from { transform: translateX(20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        /* 骨架屏 */
-        .skeleton {
-            background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-            border-radius: 6px;
-        }
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        /* 响应式 */
-        @media (max-width: 991.98px) {
-            .col-lg-4, .col-lg-8 { margin-bottom: 1rem; }
-            .preview-frame { height: 60vh; min-height: 400px; }
-        }
-        /* 颜色选择器 */
-        input[type="color"] {
-            padding: 2px; height: 38px; width: 100%;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Markdown 多语言 PDF 交付台</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body>
-    <nav class="navbar sticky-top">
-        <div class="container-fluid px-4">
-            <div class="navbar-brand-wrap">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="brand-logo">
-                <span class="brand-name">AI 文档翻译中心</span>
-            </div>
-            <div class="d-flex gap-2 align-items-center">
-                <span id="ai-status" class="status-pill">
-                    <span class="dot"></span><span>检查中…</span>
-                </span>
-                <button id="themeToggle" class="icon-btn" title="切换暗色模式" aria-label="切换暗色模式">
-                    <i class="bi bi-moon-stars"></i>
-                </button>
-            </div>
-        </div>
-    </nav>
+  {% include "partials/icons.html" %}
 
-    <div class="container-fluid px-4 my-4">
-        <div class="row g-4">
-            <!-- 左侧：控制面板 -->
-            <div class="col-lg-4">
-                <div class="card card-elevated p-3">
-                    <!-- 1. 上传 -->
-                    <fieldset class="form-section">
-                        <legend><i class="bi bi-cloud-upload"></i>1. 上传文件</legend>
-                        <div class="upload-types" role="group">
-                            <input type="radio" class="btn-check" name="upload_type" id="zipRadio" value="zip" checked>
-                            <label class="btn" for="zipRadio"><i class="bi bi-file-zip me-1"></i>ZIP</label>
-                            <input type="radio" class="btn-check" name="upload_type" id="folderRadio" value="folder">
-                            <label class="btn" for="folderRadio"><i class="bi bi-folder2-open me-1"></i>文件夹</label>
-                            <input type="radio" class="btn-check" name="upload_type" id="fileRadio" value="file">
-                            <label class="btn" for="fileRadio"><i class="bi bi-file-earmark-text me-1"></i>单文件</label>
-                        </div>
-                        <label for="file_input" class="upload-zone" id="dropZone">
-                            <i class="bi bi-cloud-arrow-up upload-icon"></i>
-                            <div class="mt-2 fw-medium" id="dropHint">点击或拖拽文件到此处</div>
-                            <div class="text-muted small mt-1" id="file-name-hint"></div>
-                            <input type="file" id="file_input" name="files" class="d-none">
-                        </label>
-                        <div id="status-message" class="alert alert-info py-2 px-3 mt-2 mb-0 small" role="status"></div>
-                    </fieldset>
-
-                    <!-- 2. 选择 + 语言 -->
-                    <div id="main-controls" style="display: none;">
-                        <fieldset class="form-section">
-                            <legend><i class="bi bi-file-earmark"></i>2. 选择文件 / 语言</legend>
-                            <div class="mb-2">
-                                <label class="form-label" for="preview_file_select">预览文件</label>
-                                <select id="preview_file_select" class="form-select form-select-sm"></select>
-                            </div>
-                            <div>
-                                <label class="form-label" for="target_language">目标语言</label>
-                                <select id="target_language" class="form-select form-select-sm">
-                                    {% for code, label in languages %}
-                                    <option value="{{ code }}">{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </fieldset>
-
-                        <!-- 3. 主题预设 -->
-                        <fieldset class="form-section">
-                            <legend><i class="bi bi-palette"></i>3. 主题预设</legend>
-                            <div class="row g-2" id="theme-grid">
-                                {% for key, theme in themes.items() %}
-                                <div class="col-3">
-                                    <div class="theme-chip" data-theme-key="{{ key }}" title="{{ theme.name }}">
-                                        <div class="theme-preview">
-                                            <div style="background: {{ theme.text_color }};"></div>
-                                            <div style="background: {{ theme.heading_color }};"></div>
-                                            <div style="background: {{ theme.link_color }};"></div>
-                                            <div style="background: {{ theme.quote_bg_color }};"></div>
-                                        </div>
-                                        <div class="theme-name">{{ theme.name }}</div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </fieldset>
-
-                        <!-- 4. 详细样式 -->
-                        <details class="form-section" id="style-details">
-                            <summary><strong style="color: var(--brand-1);"><i class="bi bi-sliders me-1"></i>4. 详细样式</strong></summary>
-                            <div class="mt-3">
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <label class="form-label">页面方向</label>
-                                        <select id="page_orientation" class="form-select form-select-sm">
-                                            <option value="portrait">纵向</option>
-                                            <option value="landscape">横向</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">页边距</label>
-                                        <select id="page_margin" class="form-select form-select-sm">
-                                            <option value="2.5cm">标准</option>
-                                            <option value="2cm">中等</option>
-                                            <option value="1.5cm">较窄</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">正文字体</label>
-                                        <select id="font_family" class="form-select form-select-sm">
-                                            <option value='"Times New Roman", "Microsoft YaHei", serif'>宋体/衬线</option>
-                                            <option value='"Helvetica", "Arial", "Microsoft YaHei", sans-serif'>黑体/非衬线</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">正文字号</label>
-                                        <select id="font_size" class="form-select form-select-sm">
-                                            <option value="12pt">12pt</option>
-                                            <option value="11pt">11pt</option>
-                                            <option value="10pt">10pt</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">行间距</label>
-                                        <select id="line_height" class="form-select form-select-sm">
-                                            <option value="1.7">1.7</option>
-                                            <option value="1.5">1.5</option>
-                                            <option value="2.0">2.0</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">文本对齐</label>
-                                        <select id="text_align" class="form-select form-select-sm">
-                                            <option value="justify">两端对齐</option>
-                                            <option value="left">左对齐</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">标题粗细</label>
-                                        <select id="heading_weight" class="form-select form-select-sm">
-                                            <option value="700">粗体</option>
-                                            <option value="normal">常规</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">代码高亮</label>
-                                        <select id="code_theme" class="form-select form-select-sm">
-                                            <option value="kate">Kate</option>
-                                            <option value="pygments">Pygments</option>
-                                            <option value="tango">Tango</option>
-                                            <option value="monokai">Monokai</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">代码字号</label>
-                                        <select id="code_font_size" class="form-select form-select-sm">
-                                            <option value="85%">85%</option>
-                                            <option value="100%">100%</option>
-                                            <option value="75%">75%</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">正文颜色</label>
-                                        <input type="color" id="text_color" value="#333333">
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">标题颜色</label>
-                                        <input type="color" id="heading_color" value="#000000">
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">链接颜色</label>
-                                        <input type="color" id="link_color" value="#0d6efd">
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">引用块背景</label>
-                                        <input type="color" id="quote_bg_color" value="#f9f9f9">
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="form-label">引用块边框</label>
-                                        <input type="color" id="quote_border_color" value="#cccccc">
-                                    </div>
-                                </div>
-                            </div>
-                        </details>
-
-                        <!-- 5. 导出模式 -->
-                        <fieldset class="form-section">
-                            <legend><i class="bi bi-box-arrow-up-right"></i>5. 导出模式</legend>
-                            {% for value, label in export_modes %}
-                            <input type="radio" class="mode-radio" name="export_mode" id="mode_{{ value }}" value="{{ value }}" {% if loop.first %}checked{% endif %}>
-                            <label for="mode_{{ value }}" class="mode-card mb-2">
-                                <div class="mode-title">
-                                    {% if value == 'translated' %}<i class="bi bi-translate me-1"></i>
-                                    {% elif value == 'original' %}<i class="bi bi-file-text me-1"></i>
-                                    {% else %}<i class="bi bi-layout-split me-1"></i>{% endif %}
-                                    {{ label }}
-                                </div>
-                                <div class="mode-desc">
-                                    {% if value == 'translated' %}只生成译文 PDF，文件名也会翻译（需要 AI）
-                                    {% elif value == 'original' %}只生成原文 PDF（不需要 AI）
-                                    {% else %}同时生成对照 PDF + 单独译文 PDF
-                                    {% endif %}
-                                </div>
-                            </label>
-                            {% endfor %}
-                        </fieldset>
-
-                        <button type="button" id="convertBtn" class="btn btn-brand w-100 mt-2" disabled>
-                            <i class="bi bi-lightning-charge-fill me-2"></i>开始批量处理
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 右侧：预览 + 进度 -->
-            <div class="col-lg-8">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="preview-header">
-                            <span><i class="bi bi-file-text me-1"></i>原文预览</span>
-                            <span class="badge bg-secondary-subtle text-secondary" id="orig-page-info">—</span>
-                        </div>
-                        <iframe id="preview-original" class="preview-frame" title="Original Preview"></iframe>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="preview-header">
-                            <span><i class="bi bi-translate me-1"></i>译文预览</span>
-                            <span class="badge bg-secondary-subtle text-secondary" id="trans-page-info">—</span>
-                        </div>
-                        <iframe id="preview-translated" class="preview-frame" title="Translated Preview"></iframe>
-                    </div>
-                </div>
-
-                <!-- 进度区 -->
-                <div id="progress-area" class="card progress-card p-3 mt-3" style="display: none;">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0"><i class="bi bi-activity me-1"></i>处理进度</h6>
-                        <span id="progress-text" class="text-muted small">0%</span>
-                    </div>
-                    <div class="progress mb-2" role="progressbar">
-                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%;">0%</div>
-                    </div>
-                    <div class="small text-muted mb-3" id="current-file-hint">准备中...</div>
-                    <div id="task-controls" class="d-flex gap-2 justify-content-center mb-3" style="display: none;">
-                        <button id="pauseBtn" class="btn btn-sm btn-warning"><i class="bi bi-pause-fill me-1"></i>暂停</button>
-                        <button id="resumeBtn" class="btn btn-sm btn-success" style="display:none;"><i class="bi bi-play-fill me-1"></i>继续</button>
-                        <button id="stopBtn" class="btn btn-sm btn-danger"><i class="bi bi-stop-circle-fill me-1"></i>结束</button>
-                    </div>
-                    <details open>
-                        <summary class="text-muted small mb-1">实时日志 <span id="log-count" class="badge bg-secondary ms-2">0</span></summary>
-                        <div id="log-container" class="log-container"></div>
-                    </details>
-                    <div id="download-area" class="d-grid mt-3" style="display: none;">
-                        <a id="download-link" href="#" class="btn btn-success">
-                            <i class="bi bi-cloud-download me-2"></i>下载结果 (ZIP)
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h9l3 3h4v13H4z"/><path d="M8 13h8M8 17h5"/></svg>
+      </span>
+      <div class="brand-text">
+        <div class="brand-name">Markdown 多语言 PDF 交付台</div>
+        <div class="brand-sub">翻译 · 排版 · 出版级交付</div>
+      </div>
     </div>
 
-    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+    <nav class="header-nav" role="tablist" aria-label="主导航">
+      <button class="nav-tab" role="tab" data-view="workspace" aria-selected="true">工作台</button>
+      <button class="nav-tab" role="tab" data-view="history" aria-selected="false">历史任务</button>
+      <button class="nav-tab" role="tab" data-view="settings" aria-selected="false">配置中心</button>
+    </nav>
 
-    <script>
-    // 主题预设（后端注入）
-    const THEMES = {{ themes_json | safe }};
+    <span class="header-spacer"></span>
 
-    // 状态
-    let currentTaskId = null;
-    let pollTimer = null;
+    <div class="header-actions">
+      <span class="badge badge-dot" id="ai-status" title="翻译引擎状态">
+        <span>检查中…</span>
+      </span>
+      <button class="btn btn-icon" id="theme-toggle" type="button" aria-label="切换深浅主题" title="切换深浅主题">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
 
-    const $ = (id) => document.getElementById(id);
-    const ui = {
-        zipRadio: $('zipRadio'), folderRadio: $('folderRadio'), fileRadio: $('fileRadio'),
-        fileInput: $('file_input'), dropZone: $('dropZone'),
-        dropHint: $('drop-hint'), fileNameHint: $('file-name-hint'),
-        mainControls: $('main-controls'),
-        previewFileSelect: $('preview_file_select'),
-        targetLanguage: $('target_language'),
-        statusMessage: $('status-message'),
-        previewOriginal: $('preview-original'),
-        previewTranslated: $('preview-translated'),
-        origPageInfo: $('orig-page-info'),
-        transPageInfo: $('trans-page-info'),
-        convertBtn: $('convertBtn'),
-        progressArea: $('progress-area'),
-        progressBar: $('progress-bar'),
-        progressText: $('progress-text'),
-        currentFileHint: $('current-file-hint'),
-        taskControls: $('task-controls'),
-        pauseBtn: $('pauseBtn'),
-        resumeBtn: $('resumeBtn'),
-        stopBtn: $('stopBtn'),
-        logContainer: $('log-container'),
-        logCount: $('log-count'),
-        downloadArea: $('download-area'),
-        downloadLink: $('download-link'),
-        styleDetails: $('style-details'),
-        themeGrid: $('theme-grid'),
-        themeToggle: $('themeToggle'),
-        aiStatus: $('ai-status'),
-        toastStack: $('toastStack'),
+  <main>
+    <!-- ============================ 工作台 ============================ -->
+    <section id="view-workspace" class="workspace" role="tabpanel" aria-label="工作台">
+      <div class="panel-stack">
+        <div class="steps" role="list" aria-label="转换步骤">
+          <div class="step" role="listitem" data-step="1" data-state="active">
+            <span class="step-num">1</span><span class="step-label">上传文档</span>
+          </div>
+          <span class="step-divider" aria-hidden="true"></span>
+          <div class="step" role="listitem" data-step="2" data-state="pending">
+            <span class="step-num">2</span><span class="step-label">配置与预览</span>
+          </div>
+          <span class="step-divider" aria-hidden="true"></span>
+          <div class="step" role="listitem" data-step="3" data-state="pending">
+            <span class="step-num">3</span><span class="step-label">转换与交付</span>
+          </div>
+        </div>
+
+        <!-- 1. 上传 -->
+        <section class="card" id="card-upload">
+          <div class="card-head">
+            <div>
+              <div class="card-title">上传文档</div>
+              <div class="card-desc">支持 ZIP 批量、文件夹与单个 .md 文件</div>
+            </div>
+            <span class="header-spacer" style="flex:1 1 auto"></span>
+            <div class="segmented" id="upload-type" role="group" aria-label="上传类型">
+              <button type="button" data-type="zip" aria-pressed="true">ZIP</button>
+              <button type="button" data-type="folder" aria-pressed="false">文件夹</button>
+              <button type="button" data-type="file" aria-pressed="false">单文件</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <label class="dropzone" id="dropzone" for="file-input" tabindex="0">
+              <span class="dropzone-icon" aria-hidden="true">
+                <svg class="icon icon-lg" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 16v3h14v-3"/></svg>
+              </span>
+              <span class="dropzone-title" id="dropzone-title">点击选择或拖拽文件到此处</span>
+              <span class="dropzone-hint" id="dropzone-hint">ZIP 包内可含多级目录，仅处理 .md 文件</span>
+              <input type="file" id="file-input" class="visually-hidden">
+            </label>
+
+            <div id="upload-summary" class="field-hint" style="margin-top:12px" hidden></div>
+            <div id="file-list" class="file-list" style="margin-top:12px" hidden></div>
+          </div>
+        </section>
+
+        <!-- 2. 配置 -->
+        <section class="card" id="card-config" hidden>
+          <div class="card-head">
+            <div>
+              <div class="card-title">翻译与排版配置</div>
+              <div class="card-desc">修改后右侧预览会即时刷新</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="target-language">目标语言</label>
+                <select class="select" id="target-language"></select>
+              </div>
+              <div class="field">
+                <label class="field-label" for="export-mode">导出模式</label>
+                <select class="select" id="export-mode"></select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="bilingual-layout" id="bilingual-layout-field" hidden>双语版式</label>
+              <select class="select" id="bilingual-layout" hidden></select>
+            </div>
+
+            <div class="field">
+              <span class="field-label">版式主题</span>
+              <div class="theme-grid" id="theme-grid" role="group" aria-label="版式主题"></div>
+            </div>
+
+            <details id="style-details">
+              <summary style="cursor:pointer;font-size:var(--text-xs);font-weight:600;color:var(--text-secondary);padding:6px 0">
+                高级排版（页面尺寸 / 边距 / 字号 / 行距 / 颜色）
+              </summary>
+              <div style="padding-top:8px">
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field-label" for="page-size">页面尺寸</label>
+                    <select class="select" id="page-size"></select>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="page-orientation">方向</label>
+                    <select class="select" id="page-orientation">
+                      <option value="portrait">纵向</option>
+                      <option value="landscape">横向</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field-label" for="font-size">字号</label>
+                    <select class="select" id="font-size">
+                      <option value="10pt">10 pt</option>
+                      <option value="10.5pt">10.5 pt</option>
+                      <option value="11pt" selected>11 pt</option>
+                      <option value="12pt">12 pt</option>
+                      <option value="13pt">13 pt</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="line-height">行距</label>
+                    <select class="select" id="line-height">
+                      <option value="1.5">1.5</option>
+                      <option value="1.65">1.65</option>
+                      <option value="1.75" selected>1.75</option>
+                      <option value="1.9">1.9</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="page-margin">页边距</label>
+                  <input class="input" id="page-margin" type="text" value="2.2cm 2cm" spellcheck="false">
+                  <div class="field-hint">CSS 语法，例如 <code>2.2cm 2cm</code> 或 <code>18mm 20mm 22mm</code></div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field-label" for="text-color">正文颜色</label>
+                    <input class="input" id="text-color" type="color" value="#1f2328">
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="accent-color">强调色</label>
+                    <input class="input" id="accent-color" type="color" value="#1f5fbf">
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <div class="field" style="margin-top:12px">
+              <span class="field-label">文档要素</span>
+              <div class="switch-row">
+                <span>封面</span>
+                <label class="switch"><input type="checkbox" data-doc="cover" checked><span class="switch-track"></span></label>
+              </div>
+              <div class="switch-row">
+                <span>目录（含页码）</span>
+                <label class="switch"><input type="checkbox" data-doc="toc" checked><span class="switch-track"></span></label>
+              </div>
+              <div class="switch-row">
+                <span>页眉</span>
+                <label class="switch"><input type="checkbox" data-doc="header" checked><span class="switch-track"></span></label>
+              </div>
+              <div class="switch-row">
+                <span>页码</span>
+                <label class="switch"><input type="checkbox" data-doc="page_number" checked><span class="switch-track"></span></label>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="doc-title">封面标题</label>
+                <input class="input" id="doc-title" type="text" placeholder="留空则取文档首个标题">
+              </div>
+              <div class="field">
+                <label class="field-label" for="doc-author">作者 / 机构</label>
+                <input class="input" id="doc-author" type="text" placeholder="选填">
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="doc-subtitle">封面副标题</label>
+              <input class="input" id="doc-subtitle" type="text" placeholder="选填，如 “对外交付版 v1.0”">
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="doc-date">日期</label>
+              <input class="input" id="doc-date" type="text" placeholder="如 2026-11-23" spellcheck="false">
+            </div>
+
+            <div class="field">
+              <div class="field-label">
+                <span>术语表</span>
+                <button class="btn btn-sm" type="button" id="suggest-glossary">自动提取候选</button>
+              </div>
+              <div class="glossary-list" id="glossary-list"></div>
+              <button class="btn btn-sm btn-ghost" type="button" id="add-glossary" style="margin-top:8px">+ 添加术语</button>
+              <div class="field-hint">命中的术语在全文强制使用指定译法，翻译后自动核对一致性。</div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="tone">文体</label>
+              <select class="select" id="tone"></select>
+            </div>
+          </div>
+          <div class="card-foot">
+            <button class="btn btn-primary btn-lg" id="start-btn" type="button" style="flex:1 1 auto">开始转换</button>
+            <button class="btn btn-lg" id="reset-btn" type="button">重选文件</button>
+          </div>
+        </section>
+
+        <!-- 3. 进度 -->
+        <section class="card" id="card-progress" hidden>
+          <div class="card-head">
+            <div>
+              <div class="card-title">转换进度</div>
+              <div class="card-desc" id="progress-sub">准备中…</div>
+            </div>
+            <span class="header-spacer" style="flex:1 1 auto"></span>
+            <span class="badge badge-dot is-live" id="state-badge">RUNNING</span>
+          </div>
+          <div class="card-body">
+            <div class="progress-head">
+              <span class="progress-pct" id="progress-pct">0%</span>
+              <span class="file-meta" id="progress-current"></span>
+            </div>
+            <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-role">
+              <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="stat-grid">
+              <div class="stat"><div class="stat-value" id="stat-total">0</div><div class="stat-label">文件总数</div></div>
+              <div class="stat"><div class="stat-value" id="stat-success" style="color:var(--success)">0</div><div class="stat-label">成功</div></div>
+              <div class="stat"><div class="stat-value" id="stat-failed" style="color:var(--danger)">0</div><div class="stat-label">失败</div></div>
+            </div>
+            <div class="field" style="margin-top:16px">
+              <div class="field-label"><span>运行日志</span></div>
+              <div class="log-box" id="log-box" role="log" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="card-foot">
+            <button class="btn" id="pause-btn" type="button">暂停</button>
+            <button class="btn" id="resume-btn" type="button" hidden>继续</button>
+            <button class="btn btn-danger" id="cancel-btn" type="button">取消</button>
+            <span class="header-spacer" style="flex:1 1 auto"></span>
+            <button class="btn btn-primary" id="download-btn" type="button" hidden>下载结果 ZIP</button>
+          </div>
+        </section>
+
+        <!-- 失败/结果明细 -->
+        <section class="card" id="card-files" hidden>
+          <div class="card-head">
+            <div>
+              <div class="card-title">文件明细</div>
+              <div class="card-desc" id="files-sub"></div>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div id="result-files"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 预览 -->
+      <section class="card preview-shell" id="card-preview">
+        <div class="preview-toolbar">
+          <div class="segmented" id="preview-mode" role="group" aria-label="预览模式">
+            <button type="button" data-mode="original" aria-pressed="true">原文</button>
+            <button type="button" data-mode="translated" aria-pressed="false">译文</button>
+            <button type="button" data-mode="bilingual" aria-pressed="false">双语</button>
+          </div>
+          <span class="header-spacer" style="flex:1 1 auto"></span>
+          <span class="badge" id="preview-pages">— 页</span>
+          <button class="btn btn-sm" id="preview-refresh" type="button">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+            刷新
+          </button>
+          <button class="btn btn-sm btn-ghost" id="preview-download" type="button">下载预览 PDF</button>
+        </div>
+        <div class="preview-frame-wrap">
+          <iframe class="preview-frame" id="preview-frame" title="PDF 预览"></iframe>
+          <div class="preview-empty" id="preview-empty">
+            <span class="empty-icon" aria-hidden="true">
+              <svg class="icon icon-lg" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M10 12h5M10 16h3"/></svg>
+            </span>
+            <div class="preview-empty-title">上传文档后在此预览排版效果</div>
+            <div class="preview-empty-desc">预览为真实 PDF 渲染结果，包含封面、目录页码、页眉页脚，与最终交付完全一致。</div>
+          </div>
+          <div class="preview-loading" id="preview-loading" hidden>
+            <div class="skeleton" style="width:64px;height:64px;border-radius:50%"></div>
+            <div class="preview-empty-title">正在渲染预览…</div>
+            <div class="preview-empty-desc" id="preview-loading-desc">首次翻译预览需要调用 AI，请稍候</div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================ 历史 ============================ -->
+    <section id="view-history" class="page-wrap" role="tabpanel" aria-label="历史任务" hidden>
+      <div class="history-head">
+        <h1>历史任务</h1>
+        <span class="header-spacer"></span>
+        <input class="input" id="history-search" type="search" placeholder="搜索标题或文件名" style="width:220px">
+        <select class="select" id="history-state" style="width:140px">
+          <option value="">全部状态</option>
+          <option value="SUCCESS">成功</option>
+          <option value="FAILURE">失败</option>
+          <option value="RUNNING">运行中</option>
+          <option value="PAUSED">已暂停</option>
+          <option value="STOPPED">已停止</option>
+          <option value="READY">待开始</option>
+        </select>
+        <button class="btn" id="history-refresh" type="button">刷新</button>
+      </div>
+      <div class="card">
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>任务</th>
+                <th>状态</th>
+                <th>文件</th>
+                <th>语言 / 模式</th>
+                <th>耗时</th>
+                <th style="text-align:right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+        <div id="history-empty" class="empty-state" hidden>
+          <span class="empty-icon" aria-hidden="true">
+            <svg class="icon icon-lg" viewBox="0 0 24 24"><path d="M4 5h16v15H4z"/><path d="M8 10h8M8 14h5"/></svg>
+          </span>
+          <div class="empty-title">还没有历史任务</div>
+          <div class="empty-desc">完成一次转换后，任务会持久化保存在这里，重启服务也不会丢失。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ 配置中心 ============================ -->
+    <section id="view-settings" class="page-wrap" role="tabpanel" aria-label="配置中心" hidden>
+      <div class="history-head">
+        <h1>配置中心</h1>
+        <span class="header-spacer"></span>
+        <span class="badge" id="settings-mode">—</span>
+      </div>
+      <div class="settings-grid">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">AI 翻译服务</div>
+              <div class="card-desc">修改后立即生效，无需重启；密钥仅以掩码回显</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label class="field-label" for="set-api-url">服务地址</label>
+              <input class="input" id="set-api-url" type="url" placeholder="https://api.openai.com/v1/chat/completions" spellcheck="false">
+              <div class="field-hint">兼容 OpenAI Chat Completions 协议的任何服务</div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="set-api-key">API 密钥<span class="file-meta" id="set-key-state"></span></label>
+              <input class="input" id="set-api-key" type="password" placeholder="留空表示不修改" autocomplete="new-password">
+              <div class="field-hint">密钥不会明文回显，也不会写入日志；留空保持原值，勾选下方“清除密钥”可删除。</div>
+            </div>
+            <div class="switch-row">
+              <span>清除已保存的密钥</span>
+              <label class="switch"><input type="checkbox" id="set-clear-key"><span class="switch-track"></span></label>
+            </div>
+            <div class="field">
+              <label class="field-label" for="set-model">模型</label>
+              <input class="input" id="set-model" type="text" placeholder="gpt-4o-mini" spellcheck="false">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="set-concurrency">并发数</label>
+                <input class="input" id="set-concurrency" type="number" min="1" max="16" step="1">
+              </div>
+              <div class="field">
+                <label class="field-label" for="set-timeout">超时（秒）</label>
+                <input class="input" id="set-timeout" type="number" min="10" max="600" step="10">
+              </div>
+            </div>
+            <div class="switch-row">
+              <span>离线演示模式（mock，无需密钥）</span>
+              <label class="switch"><input type="checkbox" id="set-mock"><span class="switch-track"></span></label>
+            </div>
+            <div class="field-hint" style="margin-top:6px">
+              打开离线演示后，翻译由本地 mock 引擎完成：保留全部 Markdown 结构、走完整切分与结构校验流程，可离线演示全流程。
+            </div>
+          </div>
+          <div class="card-foot">
+            <button class="btn btn-primary" id="settings-save" type="button">保存配置</button>
+            <button class="btn" id="settings-test" type="button">测试连接</button>
+            <span class="header-spacer" style="flex:1 1 auto"></span>
+            <span class="file-meta" id="settings-source"></span>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">运行环境</div>
+              <div class="card-desc">依赖与能力自检</div>
+            </div>
+            <span class="header-spacer" style="flex:1 1 auto"></span>
+            <button class="btn btn-sm" id="health-refresh" type="button">重新检测</button>
+          </div>
+          <div class="card-body" id="health-body">
+            <div class="skeleton skeleton-row" style="width:70%"></div>
+            <div class="skeleton skeleton-row" style="width:50%"></div>
+            <div class="skeleton skeleton-row" style="width:60%"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">限制与版本</div>
+              <div class="card-desc">部署参数</div>
+            </div>
+          </div>
+          <div class="card-body" id="limits-body">
+            <div class="skeleton skeleton-row" style="width:56%"></div>
+            <div class="skeleton skeleton-row" style="width:44%"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- 设置对话框（用于封面元信息之外的少量弹层） -->
+  <div id="modal-root"></div>
+
+  <script>
+    window.__M2P__ = {
+      version: {{ app_version | tojson }},
+      configured: {{ (ai.key_set) | tojson }},
+      mode: {{ (ai.mode) | tojson }},
+      model: {{ (ai.model) | tojson }}
     };
-
-    // ==================== 工具 ====================
-    function debounce(fn, ms) {
-        let t;
-        return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-    }
-    const debouncedPreview = debounce(generatePreview, 500);
-
-    function toast(msg, type = 'info', duration = 3500) {
-        const el = document.createElement('div');
-        el.className = `toast-item ${type}`;
-        el.innerHTML = msg;
-        ui.toastStack.appendChild(el);
-        setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; el.style.transition = 'all 0.3s'; }, duration);
-        setTimeout(() => el.remove(), duration + 300);
-    }
-
-    function setStatus(msg, type = 'info') {
-        ui.statusMessage.textContent = msg;
-        ui.statusMessage.className = `alert alert-${type} py-2 px-3 mt-2 mb-0 small`;
-    }
-
-    function getStyleOptions() {
-        const opts = {};
-        document.querySelectorAll('#style-details select, #style-details input').forEach(el => {
-            if (el.id) opts[el.id] = el.value;
-        });
-        return opts;
-    }
-
-    // ==================== 主题 ====================
-    function applyTheme(theme) {
-        document.documentElement.setAttribute('data-bs-theme', theme);
-        ui.themeToggle.innerHTML = theme === 'dark'
-            ? '<i class="bi bi-sun"></i>'
-            : '<i class="bi bi-moon-stars"></i>';
-        try { localStorage.setItem('m2p-theme', theme); } catch {}
-    }
-    ui.themeToggle.addEventListener('click', () => {
-        const cur = document.documentElement.getAttribute('data-bs-theme');
-        applyTheme(cur === 'dark' ? 'light' : 'dark');
-    });
-    try { applyTheme(localStorage.getItem('m2p-theme') || 'light'); } catch { applyTheme('light'); }
-
-    function applyThemePreset(key) {
-        const t = THEMES[key];
-        if (!t) return;
-        Object.entries(t).forEach(([k, v]) => {
-            const el = document.getElementById(k);
-            if (el && document.getElementById('style-details').contains(el)) el.value = v;
-        });
-        document.querySelectorAll('.theme-chip').forEach(c => c.classList.toggle('active', c.dataset.themeKey === key));
-        debouncedPreview();
-    }
-    ui.themeGrid.addEventListener('click', e => {
-        const chip = e.target.closest('.theme-chip');
-        if (chip) applyThemePreset(chip.dataset.themeKey);
-    });
-    // 默认选中第一个主题
-    const firstChip = document.querySelector('.theme-chip');
-    if (firstChip) { firstChip.classList.add('active'); applyThemePreset(firstChip.dataset.themeKey); }
-
-    // 监听所有样式变化
-    ui.styleDetails.addEventListener('change', debouncedPreview);
-    ui.previewFileSelect.addEventListener('change', debouncedPreview);
-    ui.targetLanguage.addEventListener('change', debouncedPreview);
-
-    // ==================== 上传 ====================
-    function toggleUploadMode() {
-        const isFolder = ui.folderRadio.checked;
-        const isFile = ui.fileRadio.checked;
-        ui.fileInput.webkitdirectory = isFolder;
-        ui.fileInput.directory = isFolder;
-        ui.fileInput.multiple = isFolder;
-        ui.fileInput.accept = isFile ? '.md' : (isFolder ? '' : '.zip');
-        resetState();
-    }
-    [ui.zipRadio, ui.folderRadio, ui.fileRadio].forEach(r => r.addEventListener('change', toggleUploadMode));
-
-    // 拖拽
-    ['dragenter','dragover'].forEach(ev => ui.dropZone.addEventListener(ev, e => { e.preventDefault(); ui.dropZone.classList.add('dragover'); ui.dropHint.textContent = '松开即可上传'; }));
-    ['dragleave','drop'].forEach(ev => ui.dropZone.addEventListener(ev, e => { e.preventDefault(); ui.dropZone.classList.remove('dragover'); ui.dropHint.textContent = '点击或拖拽文件到此处'; }));
-    ui.dropZone.addEventListener('drop', e => {
-        if (e.dataTransfer.files.length) {
-            ui.fileInput.files = e.dataTransfer.files;
-            ui.fileInput.dispatchEvent(new Event('change'));
-        }
-    });
-
-    ui.fileInput.addEventListener('change', () => {
-        const files = ui.fileInput.files;
-        if (files.length === 0) { ui.fileNameHint.textContent = ''; return; }
-        ui.fileNameHint.textContent = files.length === 1 ? files[0].name : `已选 ${files.length} 个文件`;
-    });
-
-    function resetState() {
-        currentTaskId = null;
-        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-        ui.fileInput.value = '';
-        ui.fileNameHint.textContent = '';
-        ui.mainControls.style.display = 'none';
-        setStatus('选择 ZIP 包、文件夹或单个 .md 文件', 'info');
-        ui.previewOriginal.src = 'about:blank';
-        ui.previewTranslated.src = 'about:blank';
-        ui.origPageInfo.textContent = '—';
-        ui.transPageInfo.textContent = '—';
-        ui.progressArea.style.display = 'none';
-        ui.taskControls.style.display = 'none';
-        ui.logContainer.innerHTML = '';
-        ui.logCount.textContent = '0';
-        ui.downloadArea.style.display = 'none';
-        ui.convertBtn.disabled = true;
-    }
-
-    async function handleFileSelection() {
-        const files = ui.fileInput.files;
-        if (!files || files.length === 0) return;
-
-        const formData = new FormData();
-        formData.append('upload_type', document.querySelector('input[name="upload_type"]:checked').value);
-        if (ui.zipRadio.checked) formData.append('zipfile', files[0]);
-        else if (ui.folderRadio.checked) for (const f of files) formData.append('files[]', f, f.webkitRelativePath);
-        else formData.append('file', files[0]);
-
-        setStatus('文件上传和预处理中…', 'warning');
-        try {
-            const res = await fetch('/prepare_upload', { method: 'POST', body: formData });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || '服务器准备文件失败');
-
-            currentTaskId = data.task_id;
-            if (data.preview_files && data.preview_files.length > 0) {
-                setStatus(`✅ 准备就绪！共找到 ${data.preview_files.length} 个 .md 文件`, 'success');
-                ui.previewFileSelect.innerHTML = '';
-                data.preview_files.forEach(f => {
-                    const o = document.createElement('option');
-                    o.value = f; o.textContent = f; o.title = f;
-                    ui.previewFileSelect.appendChild(o);
-                });
-                ui.mainControls.style.display = 'block';
-                ui.convertBtn.disabled = false;
-                generatePreview();
-            } else {
-                setStatus('⚠️ 上传成功但未找到 .md 文件', 'warning');
-            }
-        } catch (err) {
-            setStatus(`❌ ${err.message}`, 'danger');
-            resetState();
-        }
-    }
-    ui.fileInput.addEventListener('change', handleFileSelection);
-
-    // ==================== 预览 ====================
-    async function generatePreview() {
-        if (!currentTaskId || !ui.previewFileSelect.value) return;
-        const payload = {
-            task_id: currentTaskId,
-            style_options: getStyleOptions(),
-            preview_file: ui.previewFileSelect.value,
-            target_language: ui.targetLanguage.value,
-        };
-        const loadingHtml = (m, isErr=false) => `<!DOCTYPE html><html><body style="font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;background:${isErr?'#fef2f2':'transparent'};color:${isErr?'#dc2626':'#6b7280'};text-align:center;padding:2rem;"><div><div style="font-size:2rem;margin-bottom:.5rem">${isErr?'⚠️':'⏳'}</div><div>${m}</div></div></body></html>`;
-
-        ui.previewOriginal.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml('加载中…'));
-        ui.previewTranslated.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml('翻译中…'));
-        ui.origPageInfo.textContent = '…';
-        ui.transPageInfo.textContent = '…';
-
-        const handle = async (res, errMsg) => {
-            if (!res.ok) {
-                const text = await res.text();
-                return { err: text || errMsg, page: '0' };
-            }
-            const blob = await res.blob();
-            return { blob, page: res.headers.get('X-Page-Count') || '0' };
-        };
-
-        try {
-            const [r1, r2] = await Promise.all([
-                fetch('/preview/original', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-                fetch('/preview/translated', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
-            ]);
-            const [orig, trans] = await Promise.all([
-                handle(r1, '原文预览失败'),
-                handle(r2, '译文预览失败'),
-            ]);
-            if (orig.err) {
-                ui.previewOriginal.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml(orig.err, true));
-                ui.origPageInfo.textContent = '错误';
-            } else {
-                ui.previewOriginal.src = URL.createObjectURL(orig.blob);
-                ui.origPageInfo.textContent = `${orig.page} 页`;
-            }
-            if (trans.err) {
-                ui.previewTranslated.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(loadingHtml(trans.err, true));
-                ui.transPageInfo.textContent = '错误';
-            } else {
-                ui.previewTranslated.src = URL.createObjectURL(trans.blob);
-                ui.transPageInfo.textContent = `${trans.page} 页`;
-            }
-        } catch (err) {
-            toast('预览请求失败: ' + err.message, 'danger');
-        }
-    }
-
-    // ==================== 转换 ====================
-    ui.convertBtn.addEventListener('click', async () => {
-        if (!currentTaskId) return;
-        ui.convertBtn.disabled = true;
-        ui.convertBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>处理中…';
-        ui.progressArea.style.display = 'block';
-        ui.taskControls.style.display = 'flex';
-        ui.logContainer.innerHTML = '';
-        ui.logCount.textContent = '0';
-        ui.downloadArea.style.display = 'none';
-        ui.progressBar.style.width = '0%';
-        ui.progressBar.textContent = '0%';
-        ui.progressBar.classList.remove('bg-success', 'bg-danger');
-        ui.currentFileHint.textContent = '任务启动中...';
-
-        const exportMode = document.querySelector('input[name="export_mode"]:checked')?.value || 'translated';
-        try {
-            const res = await fetch('/start_conversion', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    task_id: currentTaskId,
-                    style_options: getStyleOptions(),
-                    target_language: ui.targetLanguage.value,
-                    export_mode: exportMode,
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || '启动失败');
-            pollStatus(data.task_id);
-        } catch (err) {
-            toast('启动失败: ' + err.message, 'danger');
-            ui.convertBtn.disabled = false;
-            ui.convertBtn.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>开始批量处理';
-            ui.taskControls.style.display = 'none';
-        }
-    });
-
-    function controlTask(action) {
-        if (!currentTaskId) return;
-        fetch(`/${action}/${currentTaskId}`, { method: 'POST' });
-    }
-    ui.pauseBtn.addEventListener('click', () => controlTask('pause'));
-    ui.resumeBtn.addEventListener('click', () => controlTask('resume'));
-    ui.stopBtn.addEventListener('click', () => controlTask('stop'));
-
-    function pollStatus(taskId) {
-        if (pollTimer) clearInterval(pollTimer);
-        pollTimer = setInterval(async () => {
-            try {
-                const res = await fetch(`/status/${taskId}`);
-                const s = await res.json();
-                if (!res.ok) throw new Error(s.error || '状态查询失败');
-                ui.progressBar.style.width = s.progress + '%';
-                ui.progressText.textContent = s.progress + '%';
-                ui.progressBar.textContent = s.progress + '%';
-                if (s.current_file) {
-                    ui.currentFileHint.textContent = `正在处理: ${s.current_file}`;
-                }
-                (s.logs || []).forEach(l => appendLog(l.log));
-                if (s.state === 'RUNNING') {
-                    ui.pauseBtn.style.display = 'inline-block';
-                    ui.resumeBtn.style.display = 'none';
-                } else if (s.state === 'PAUSED') {
-                    ui.pauseBtn.style.display = 'none';
-                    ui.resumeBtn.style.display = 'inline-block';
-                    ui.currentFileHint.textContent = '已暂停...';
-                } else if (s.state === 'STOPPING') {
-                    ui.currentFileHint.textContent = '正在停止...';
-                }
-                if (['SUCCESS','FAILURE','STOPPED'].includes(s.state)) {
-                    clearInterval(pollTimer);
-                    pollTimer = null;
-                    ui.convertBtn.disabled = false;
-                    ui.convertBtn.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i>开始批量处理';
-                    ui.taskControls.style.display = 'none';
-                    if (s.state === 'SUCCESS') {
-                        ui.progressBar.classList.add('bg-success');
-                        ui.downloadLink.href = s.result_url;
-                        ui.downloadArea.style.display = 'block';
-                        ui.currentFileHint.textContent = '✅ 全部完成';
-                        toast('🎉 任务完成！可以下载结果了。', 'success', 5000);
-                    } else {
-                        ui.progressBar.classList.add('bg-danger');
-                        ui.currentFileHint.textContent = s.state === 'FAILURE' ? `❌ 失败: ${s.error || '未知错误'}` : '⏹ 已停止';
-                        toast(`任务${s.state === 'FAILURE' ? '失败' : '已停止'}`, s.state === 'FAILURE' ? 'danger' : 'warning');
-                    }
-                }
-            } catch (e) {
-                console.error('poll error', e);
-            }
-        }, 1500);
-    }
-
-    function appendLog(msg) {
-        const pre = document.createElement('pre');
-        pre.textContent = '> ' + msg;
-        if (msg.includes('[FAIL]')) pre.className = 'fail';
-        else if (msg.includes('[WARN]')) pre.className = 'warn';
-        else if (msg.includes('[DONE]')) pre.className = 'success';
-        ui.logContainer.appendChild(pre);
-        ui.logCount.textContent = ui.logContainer.children.length;
-        ui.logContainer.scrollTop = ui.logContainer.scrollHeight;
-    }
-
-    // ==================== 启动 ====================
-    fetch('/ai_status').then(r => r.json()).then(s => {
-        const ok = s.configured;
-        ui.aiStatus.innerHTML = `<span class="dot" style="background:${ok ? 'var(--success)' : 'var(--warning)'};"></span><span class="${ok ? 'status-ok' : 'status-warn'}">${ok ? 'AI 就绪' : 'AI 未配置'}</span>`;
-        ui.aiStatus.title = ok ? `模型: ${s.model}` : '请在 .env 中配置 AI_API_KEY';
-        if (!ok) {
-            toast('AI 未配置，仅"仅原文"模式可用', 'warning', 5000);
-        }
-    }).catch(() => {
-        ui.aiStatus.innerHTML = '<span class="dot" style="background: var(--danger);"></span><span class="status-err">后端无响应</span>';
-    });
-
-    toggleUploadMode();
-    </script>
+  </script>
+  <script src="{{ url_for('static', filename='js/icons.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/ui.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/workspace.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/history.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/settings.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </body>
 </html>
